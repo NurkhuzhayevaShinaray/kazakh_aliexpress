@@ -2,15 +2,19 @@ body {
     font-family: 'Ubuntu Mono', monospace;
     margin: 0 auto;
     max-width: 800px;
+    text-align: center;
+    color: white;
+    background-color: midnightblue;
 }
 
 header h1 a {
-    color: #e41e31;
+    color: #eec643;
     text-decoration: none;
+    text-align: center;
 }
 
 nav {
-    background-color: #34495e;
+    background-color: #0d21a1;
     padding: 10px;
 }
 
