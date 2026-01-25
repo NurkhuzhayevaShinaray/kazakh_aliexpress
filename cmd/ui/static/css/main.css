@@ -1,0 +1,21 @@
+body {
+    font-family: 'Ubuntu Mono', monospace;
+    margin: 0 auto;
+    max-width: 800px;
+}
+
+header h1 a {
+    color: #e41e31;
+    text-decoration: none;
+}
+
+nav {
+    background-color: #34495e;
+    padding: 10px;
+}
+
+nav a {
+    color: #fff;
+    margin-right: 15px;
+    text-decoration: none;
+}
