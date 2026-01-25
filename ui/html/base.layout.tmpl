@@ -1,0 +1,21 @@
+{{define "base"}}
+<!doctype html>
+<html lang='en'>
+    <head>
+        <meta charset='utf-8'>
+        <title>{{template "title" .}} - Kazakh Aliexpress</title>
+        <link rel='stylesheet' href='/static/css/main.css'>
+    </head>
+    <body>
+        <header>
+            <h1><a href='/'>Kazakh Aliexpress</a></h1>
+        </header>
+        <nav>
+            <a href='/'>Home</a>
+        </nav>
+        <main>
+            {{template "main" .}}
+        </main>
+    </body>
+</html>
+{{end}}
