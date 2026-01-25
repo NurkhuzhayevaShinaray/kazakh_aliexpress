@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
 )
@@ -11,7 +11,19 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	w.Write([]byte("Welcome to Kazakh Aliexpress - Best deals only here!"))
+	files := []string{
+		"./ui/html/base.layout.tmpl",
+		"./ui/html/home.page.tmpl",
+	}
+	ts, err := template.ParseFiles(files...)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	err = ts.ExecuteTemplate(w, "base", nil)
+	if err != nil {
+		app.serverError(w, err)
+	}
 }
 
 func (app *application) showProduct(w http.ResponseWriter, r *http.Request) {
@@ -20,5 +32,16 @@ func (app *application) showProduct(w http.ResponseWriter, r *http.Request) {
 		app.notFound(w)
 		return
 	}
-	fmt.Fprintf(w, "Displaying details for Product ID: %d", id)
+	files := []string{
+		"./ui/html/base.tmpl",
+		"./ui/html/home.page.tmpl"}
+	ts, err := template.ParseFiles(files...)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	err = ts.ExecuteTemplate(w, "home.page", id)
+	if err != nil {
+		app.serverError(w, err)
+	}
 }
