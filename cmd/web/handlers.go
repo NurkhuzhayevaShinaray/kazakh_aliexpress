@@ -45,3 +45,9 @@ func (app *application) showProduct(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 	}
 }
+func (app *application) listOrders(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Orders list placeholder"))
+}
+func (app *application) listProducts(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("All products list"))
+}
