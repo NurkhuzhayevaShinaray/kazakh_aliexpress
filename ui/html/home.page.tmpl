@@ -1,8 +1,16 @@
-{{template "base" .}}
-
-{{define "title"}}Home{{end}}
-
 {{define "main"}}
-    <h2>Latest Products in Kazakhstan</h2>
-    <p>Welcome to our local marketplace!</p>
+<h2>Local Kazakh Products</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+    {{range .Products}}
+    <article class="card">
+        <header><strong>{{.Name}}</strong></header>
+        <p>{{.Price}} ₸</p>
+        <footer>
+            <a href="/product?id={{.ID.Hex}}" role="button" class="outline">View Details</a>
+        </footer>
+    </article>
+    {{else}}
+    <p>The marketplace is empty.</p>
+    {{end}}
+</div>
 {{end}}

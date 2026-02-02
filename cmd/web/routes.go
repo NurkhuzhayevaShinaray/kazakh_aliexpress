@@ -2,17 +2,22 @@ package main
 
 import "net/http"
 
-func (app *application) routes() *http.ServeMux {
+func (app *application) routes() http.Handler {
 	mux := http.NewServeMux()
+
 	mux.HandleFunc("/", app.home)
 	mux.HandleFunc("/product", app.showProduct)
-	mux.HandleFunc("/product/view/{id}", app.showProduct)
-	mux.HandleFunc("/orders", app.listOrders)
-	mux.HandleFunc("/pruducts", app.listProducts)
+	mux.HandleFunc("/catalog", app.catalogPage)
+	mux.HandleFunc("/orders", app.listOrdersPage)
 
-	fileServer := http.FileServer(http.Dir("./ui/static/"))
-	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
+	mux.HandleFunc("/product/create", app.createProduct)
+	mux.HandleFunc("/product/delete", app.deleteProduct)
+	mux.HandleFunc("/product/update", app.updateProduct)
+	mux.HandleFunc("/order/create", app.createOrder)
+	mux.HandleFunc("/review/add", app.addReview)
 
-	return mux
+	mux.HandleFunc("/api/products", app.apiProducts)
+	mux.HandleFunc("/api/orders", app.apiListOrders)
 
+	return app.logRequest(app.recoverPanic(mux))
 }

@@ -1,62 +1,59 @@
 package main
 
 import (
-	"database/sql"
-	"flag"
-	"kazakh_aliexpress/internal/models"
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
-	"github.com/joho/godotenv"
-	_ "github.com/lib/pq"
+	"kazakh_aliexpress/internal/models"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type application struct {
-	errorLog *log.Logger
-	infoLog  *log.Logger
-	products *models.ProductModel
-	orders   *models.OrderModel
+	DB         *models.MongoDB
+	orderQueue chan models.Order
+	infoLog    *log.Logger
+	errorLog   *log.Logger
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-	dsn := os.Getenv("DB_URL")
-	if dsn == "" {
-		log.Fatal("DB_URL environment variable not found")
-	}
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println("Connected to database!")
-	addr := flag.String("addr", ":4000", "HTTP network address")
-	flag.Parse()
-
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
-	app := &application{
-		errorLog: errorLog,
-		infoLog:  infoLog,
-		products: &models.ProductModel{DB: db},
-		orders:   &models.OrderModel{DB: db},
+	client, err := mongo.Connect(context.TODO(),
+		options.Client().ApplyURI("mongodb://localhost:27017"))
+	if err != nil {
+		errorLog.Fatal(err)
 	}
+
+	db := client.Database("kazakh_aliexpress")
+
+	app := &application{
+		DB: &models.MongoDB{
+			Products: db.Collection("products"),
+			Reviews:  db.Collection("reviews"),
+			Users:    db.Collection("users"),
+			Orders:   db.Collection("orders"),
+		},
+		orderQueue: make(chan models.Order, 20),
+		infoLog:    infoLog,
+		errorLog:   errorLog,
+	}
+
+	go app.orderWorker()
 
 	srv := &http.Server{
-		Addr:     *addr,
-		ErrorLog: errorLog,
-		Handler:  app.routes(),
+		Addr:         ":8080",
+		Handler:      app.routes(),
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 
-	infoLog.Printf("Starting Kazakh Aliexpress on %s", *addr)
-	err = srv.ListenAndServe()
-	errorLog.Fatal(err)
+	infoLog.Println("Server running on http://localhost:8080")
+	errorLog.Fatal(srv.ListenAndServe())
 }

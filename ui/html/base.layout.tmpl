@@ -1,21 +1,24 @@
 {{define "base"}}
 <!doctype html>
-<html lang='en'>
+<html>
     <head>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
         <meta charset='utf-8'>
-        <title>{{template "title" .}} - Kazakh-express</title>
-        <link rel='stylesheet' href='/static/css/main.css'>
+        <title>Kazakh@Express</title>
     </head>
     <body>
-        <header>
-            <h1><a href='/'>Kazakh@express</a></h1>
+        <header class="container">
+            <h1><a href='/'>Kazakh@Express</a></h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/catalog">Catalog</a></li>
+                    <li><a href="/orders">Orders</a></li>
+                </ul>
+            </nav>
         </header>
-        <nav>
-            <a href='/'>Home</a>
-        </nav>
-        <main>
-            {{template "main" .}}
-        </main>
+        <main class="container">
+            {{template "main" .}} </main>
     </body>
 </html>
 {{end}}
