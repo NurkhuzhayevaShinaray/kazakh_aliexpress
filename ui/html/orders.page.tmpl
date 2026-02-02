@@ -1,0 +1,15 @@
+{{define "main"}}
+    <h2>Recent Orders</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+        {{range .Orders}}
+            <article class="card">
+                <header>Order #{{.ID.Hex}}</header>
+                <p>Status: <mark>{{.Status}}</mark></p>
+                <p>Total: <strong>{{.TotalPrice}} ₸</strong></p>
+                <footer>Ordered on: {{.CreatedAt.Format "Jan 02, 2006"}}</footer>
+            </article>
+        {{else}}
+            <p>No orders yet.</p>
+        {{end}}
+    </div>
+{{end}}

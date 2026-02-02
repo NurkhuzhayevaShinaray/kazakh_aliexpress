@@ -1,0 +1,39 @@
+{{define "main"}}
+<div class="container">
+    <article>
+        <header><h1 style="color: #00afca;">{{.Product.Name}}</h1></header>
+        <p style="font-size: 1.5rem;">Price: <strong>{{.Product.Price}} ₸</strong></p>
+
+        <form action="/order/create" method="POST">
+            <input type="hidden" name="product_id" value="{{.Product.ID.Hex}}">
+            <label for="qty">Quantity:</label>
+            <input type="number" name="qty" value="1" min="1" style="width: 100px;">
+            <label for="email">Your Email:</label>
+            <input type="email" name="email" placeholder="example@test.com" required>
+            <button type="submit">Place Order</button>
+        </form>
+
+        <hr>
+        <h3>Reviews</h3>
+        {{range .Reviews}}
+            <blockquote>"{{.Comment}}"<footer>— Rated: {{.Rating}}/5</footer></blockquote>
+        {{else}}
+            <p>No reviews yet.</p>
+        {{end}}
+
+        <hr>
+        <h3>Leave a Review</h3>
+        <form action="/review/add" method="POST">
+            <input type="hidden" name="product_id" value="{{.Product.ID.Hex}}">
+
+            <label for="email">Your Email (to identify you):</label>
+            <input type="email" id="email" name="email" required placeholder="user@example.com">
+
+            <label for="comment">Comment:</label>
+            <textarea id="comment" name="comment" required placeholder="What do you think about this product?"></textarea>
+
+            <button type="submit">Submit Review</button>
+        </form>
+    </article>
+</div>
+{{end}}
