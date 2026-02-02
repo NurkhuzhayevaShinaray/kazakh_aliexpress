@@ -9,6 +9,7 @@ import (
 
 	"kazakh_aliexpress/internal/models"
 
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -21,11 +22,16 @@ type application struct {
 }
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	DB_URL := os.Getenv("DB_URL")
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
 
 	client, err := mongo.Connect(context.TODO(),
-		options.Client().ApplyURI("mongodb://localhost:27017"))
+		options.Client().ApplyURI(DB_URL))
 	if err != nil {
 		errorLog.Fatal(err)
 	}
