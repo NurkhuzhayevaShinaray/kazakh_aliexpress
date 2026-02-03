@@ -23,7 +23,7 @@ body {
     padding: 0 20px;
 }
 
-/* Header & Nav */
+
 header.container {
     display: flex;
     justify-content: space-between;
@@ -58,15 +58,15 @@ nav ul li a:hover {
     color: var(--kz-blue);
 }
 
-/* The Grid System */
+
 .product-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Balanced width */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 24px;
     padding: 40px 0;
 }
 
-/* Unified Card Style for both <article> and .card */
+
 article, .card {
     background: var(--bg-card);
     border: 1px solid var(--border);
@@ -75,12 +75,12 @@ article, .card {
     box-shadow: var(--shadow);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 
-    /* This section fixes uneven heights */
+
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     height: 100%;
-    box-sizing: border-box; /* Ensures padding doesn't break the width */
+    box-sizing: border-box;
 }
 
 article:hover, .card:hover {
@@ -89,21 +89,21 @@ article:hover, .card:hover {
     border-color: var(--kz-blue);
 }
 
-/* Title consistency */
+
 article h3, .card h3 {
     margin: 0 0 10px 0;
     font-size: 1.15rem;
-    min-height: 2.8em; /* Reserves space so short titles don't move buttons up */
+    min-height: 2.8em;
     color: var(--text-dark);
 }
 
-/* Price and info area */
+
 .card p, article p {
-    flex-grow: 1; /* Pushes everything below it to the bottom */
+    flex-grow: 1;
     margin-bottom: 20px;
 }
 
-/* Buttons */
+
 button, .btn-buy, [role="button"] {
     background-color: var(--kz-gold);
     color: #333;
@@ -117,14 +117,13 @@ button, .btn-buy, [role="button"] {
     text-decoration: none;
     display: block;
     transition: background 0.2s;
-    margin-top: auto; /* Final insurance for bottom-alignment */
+    margin-top: auto;
 }
 
 button:hover {
     background-color: #e6be12;
 }
 
-/* Forms */
 input, select, textarea {
     width: 100%;
     padding: 12px;
