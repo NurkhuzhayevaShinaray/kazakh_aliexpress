@@ -2,23 +2,27 @@
 <!doctype html>
 <html>
     <head>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
         <meta charset='utf-8'>
         <title>Kazakh@Express</title>
+        <link rel="stylesheet" href="/static/css/main.css">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     </head>
     <body>
-        <header class="container">
-            <h1><a href='/'>Kazakh@Express</a></h1>
-            <nav>
-                <ul>
-                    <li><a href="/">Home</a></li>
-                    <li><a href="/catalog">Catalog</a></li>
-                    <li><a href="/orders">Orders</a></li>
-                </ul>
-            </nav>
+        <header class="navbar">
+            <div class="container nav-content">
+                <h1><a href='/'>Kazakh<span>@Express</span></a></h1>
+                <nav>
+                    <ul class="nav-links">
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/catalog">Catalog</a></li>
+                        <li><a href="/orders">Orders</a></li>
+                    </ul>
+                </nav>
+            </div>
         </header>
         <main class="container">
-            {{template "main" .}} </main>
+            {{template "main" .}} 
+        </main>
     </body>
 </html>
 {{end}}

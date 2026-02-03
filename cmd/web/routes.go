@@ -19,5 +19,6 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("/api/products", app.apiProducts)
 	mux.HandleFunc("/api/orders", app.apiListOrders)
 
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./ui/static/"))))
 	return app.logRequest(app.recoverPanic(mux))
 }

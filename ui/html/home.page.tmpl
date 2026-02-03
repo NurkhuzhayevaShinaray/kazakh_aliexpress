@@ -1,14 +1,12 @@
 {{define "main"}}
-<h2>Local Kazakh Products</h2>
-<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
-    {{range .Products}}
-    <article class="card">
-        <header><strong>{{.Name}}</strong></header>
-        <p>{{.Price}} ₸</p>
-        <footer>
-            <a href="/product?id={{.ID.Hex}}" role="button" class="outline">View Details</a>
-        </footer>
-    </article>
+<h2 class="section-title">Local Kazakh Products</h2>
+<div class="product-grid"> {{range .Products}}
+    <div class="card"> <div class="card-header"><strong>{{.Name}}</strong></div>
+        <p class="price-tag">{{.Price}} ₸</p>
+        <div class="card-footer">
+            <a href="/product?id={{.ID.Hex}}" class="btn-primary">View Details</a>
+        </div>
+    </div>
     {{else}}
     <p>The marketplace is empty.</p>
     {{end}}
