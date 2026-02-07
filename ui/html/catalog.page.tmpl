@@ -1,42 +1,89 @@
 {{define "main"}}
-    <h2>Product Management</h2>
+    <h2>Marketplace Management</h2>
 
     <article>
-        <header><strong>Add New Product</strong></header>
-        <form action="/product/create" method="POST" style="display: flex; gap: 10px; align-items: flex-end;">
-            <div>
-                <label>Name</label>
-                <input type="text" name="name" required>
-            </div>
-            <div>
-                <label>Price</label>
-                <input type="number" name="price" required>
-            </div>
-            <div>
-                <label>Stock</label>
-                <input type="number" name="stock" required>
-            </div>
-            <button type="submit" style="margin-bottom: var(--spacing);">Add</button>
+        <header><strong>Add New Category</strong></header>
+        <form action="/category/add" method="POST" style="display: flex; gap: 10px;">
+            <input type="text" name="name" placeholder="Category Name (e.g., Souvenirs)" required>
+            <button type="submit">Create Category</button>
         </form>
     </article>
 
-    <form action="/catalog" method="GET">
-        <input type="text" name="search" placeholder="Search by name...">
-        <button type="submit">Search</button>
-    </form>
+    <section style="margin: 20px 0; display: flex; gap: 15px;">
+        <form action="/catalog" method="GET" style="display: flex; gap: 10px;">
+            <input type="text" name="search" placeholder="Search products...">
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px;">
-        {{range .Products}}
-            <article style="border: 1px solid #ccc; padding: 10px;">
-                <h3>{{.Name}}</h3>
-                <p>{{.Price}} ₸</p>
-                <form action="/product/delete" method="POST">
-                    <input type="hidden" name="id" value="{{.ID.Hex}}">
-                    <button style="background: #e74c3c; color: white; border: none;">Delete</button>
-                </form>
-            </article>
-        {{else}}
-            <p>No products found.</p>
-        {{end}}
-    </div>
+            <select name="category">
+                <option value="">All Categories</option>
+                {{range .Categories}}
+                    <option value="{{.ID.Hex}}">{{.Name}}</option>
+                {{end}}
+            </select>
+
+            <button type="submit">Apply Filters</button>
+        </form>
+    </section>
+
+    <section>
+        <h3>Search Results</h3>
+        <div class="product-grid">
+            {{range .Products}}
+                <div class="card">
+                    <div class="card-header"><strong>{{.Name}}</strong></div>
+                    <p>{{.Price}} ₸</p>
+                    <div class="card-footer">
+                        <a href="/product?id={{.ID.Hex}}" class="btn-primary">View</a>
+                    </div>
+                </div>
+            {{else}}
+                <div style="text-align: center; padding: 20px; border: 2px dashed #ccc;">
+                    <p>No products found matching your search or category filter.</p>
+                    <a href="/catalog">View All Products</a>
+                </div>
+            {{end}}
+        </div>
+    </section>
+
+   {{if or .SearchTerm .CategoryName}}
+       <div style="margin: 20px 0; padding: 15px; background-color: #e0f7fa; border-left: 5px solid #00afca; border-radius: 4px;">
+           <p style="margin: 0;">
+               Showing results for:
+               {{if .SearchTerm}}<strong>"{{.SearchTerm}}"</strong>{{end}}
+               {{if and .SearchTerm .CategoryName}} in {{end}}
+               {{if .CategoryName}}<strong>{{.CategoryName}}</strong>{{end}}
+           </p>
+           <a href="/catalog" style="font-size: 0.85rem; text-decoration: underline;">Clear all filters</a>
+       </div>
+   {{end}}
+
+    <article>
+        <header><strong>Add New Product</strong></header>
+        <form action="/product/create" method="POST">
+            <input type="text" name="name" placeholder="Product Name" required>
+            <input type="number" name="price" placeholder="Price (₸)" required>
+
+            <label>Category:</label>
+            <select name="category_id" id="category-select" onchange="toggleNewCategory()">
+                <option value="">-- Select Existing --</option>
+                {{range .Categories}}
+                    <option value="{{.ID.Hex}}">{{.Name}}</option>
+                {{end}}
+                <option value="NEW">Add New Category...</option>
+            </select>
+
+            <div id="new-category-div" style="display:none; margin-top: 10px;">
+                <input type="text" name="new_category_name" placeholder="Enter New Category Name">
+            </div>
+
+            <button type="submit" style="margin-top: 15px;">Create Product</button>
+        </form>
+    </article>
+
+    <script>
+    function toggleNewCategory() {
+        var select = document.getElementById("category-select");
+        var div = document.getElementById("new-category-div");
+        div.style.display = (select.value === "NEW") ? "block" : "none";
+    }
+    </script>
 {{end}}

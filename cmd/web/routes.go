@@ -16,6 +16,9 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("/order/create", app.createOrder)
 	mux.HandleFunc("/review/add", app.addReview)
 
+	mux.HandleFunc("/admin/users", app.requireRole("admin", app.listUsers))
+	mux.HandleFunc("/category/add", app.addCategory)
+
 	mux.HandleFunc("/api/products", app.apiProducts)
 	mux.HandleFunc("/api/orders", app.apiListOrders)
 

@@ -17,11 +17,14 @@ import (
 )
 
 type templateData struct {
-	Products []*models.Product
-	Product  *models.Product
-	Reviews  []*models.Review
-	Orders   []*models.Order
-	Users    []*models.User
+	Products     []*models.Product
+	Product      *models.Product
+	Reviews      []*models.Review
+	Orders       []*models.Order
+	Users        []*models.User
+	Categories   []*models.Category
+	SearchTerm   string
+	CategoryName string
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -62,35 +65,6 @@ func (app *application) addReview(w http.ResponseWriter, r *http.Request) {
 	})
 
 	http.Redirect(w, r, "/product?id="+pid.Hex(), http.StatusSeeOther)
-}
-
-func (app *application) createOrder(w http.ResponseWriter, r *http.Request) {
-	pid, _ := primitive.ObjectIDFromHex(r.FormValue("product_id"))
-	qty, _ := strconv.Atoi(r.FormValue("qty"))
-
-	product, err := app.DB.GetProductByOID(pid)
-	if err != nil {
-		app.notFound(w)
-		return
-	}
-
-	user := app.DB.FindOrCreateUser(r.FormValue("email"))
-
-	order := models.Order{
-		UserID: user.ID,
-		Status: "Pending",
-		Items: []models.OrderItem{
-			{
-				ProductID: pid,
-				Quantity:  qty,
-				UnitPrice: product.Price,
-			},
-		},
-		TotalPrice: product.Price * float64(qty),
-	}
-
-	app.orderQueue <- order
-	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (app *application) apiProducts(w http.ResponseWriter, r *http.Request) {
@@ -227,13 +201,13 @@ func (app *application) deleteProduct(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) catalogPage(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("search")
+	catID := r.URL.Query().Get("category")
+
 	var products []*models.Product
 	var err error
 
-	if search != "" {
-		filter := bson.M{"name": bson.M{"$regex": search, "$options": "i"}}
-		cur, _ := app.DB.Products.Find(context.TODO(), filter)
-		cur.All(context.TODO(), &products)
+	if search != "" || catID != "" {
+		products, err = app.DB.GetFilteredProducts(search, catID)
 	} else {
 		products, err = app.DB.GetAllProducts()
 	}
@@ -243,8 +217,20 @@ func (app *application) catalogPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	categories, _ := app.DB.GetAllCategories()
+
+	var selectedCatName string
+	for _, c := range categories {
+		if c.ID.Hex() == catID {
+			selectedCatName = c.Name
+			break
+		}
+	}
 	app.render(w, "catalog.page.tmpl", &templateData{
-		Products: products,
+		Products:     products,
+		Categories:   categories,
+		SearchTerm:   search,
+		CategoryName: selectedCatName,
 	})
 }
 
@@ -258,24 +244,50 @@ func (app *application) listOrdersPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) createProduct(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		price, _ := strconv.ParseFloat(r.FormValue("price"), 64)
-		stock, _ := strconv.Atoi(r.FormValue("stock"))
+	if r.Method != http.MethodPost {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
 
-		newProduct := models.Product{
-			ID:    primitive.NewObjectID(),
-			Name:  r.FormValue("name"),
-			Price: price,
-			Stock: stock,
+	price, _ := strconv.ParseFloat(r.FormValue("price"), 64)
+	stock, _ := strconv.Atoi(r.FormValue("stock"))
+	categoryIDStr := r.FormValue("category_id")
+
+	var catOID primitive.ObjectID
+
+	if categoryIDStr == "NEW" {
+		catOID = primitive.NewObjectID()
+		newName := r.FormValue("new_category_name")
+
+		newCat := models.Category{
+			ID:   catOID,
+			Name: newName,
 		}
 
-		_, err := app.DB.Products.InsertOne(context.TODO(), newProduct)
+		_, err := app.DB.Categories.InsertOne(context.TODO(), newCat)
 		if err != nil {
 			app.serverError(w, err)
 			return
 		}
-		http.Redirect(w, r, "/catalog", http.StatusSeeOther)
+	} else {
+		catOID, _ = primitive.ObjectIDFromHex(categoryIDStr)
 	}
+
+	newProduct := models.Product{
+		ID:         primitive.NewObjectID(),
+		Name:       r.FormValue("name"),
+		Price:      price,
+		Stock:      stock,
+		CategoryID: catOID,
+	}
+
+	_, err := app.DB.Products.InsertOne(context.TODO(), newProduct)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/catalog", http.StatusSeeOther)
 }
 
 func (app *application) apiListOrders(w http.ResponseWriter, r *http.Request) {
@@ -305,4 +317,65 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (app *application) requireRole(role string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userRole := r.URL.Query().Get("role")
+
+		if userRole != role {
+			http.Error(w, "Доступ тыйым салынған (Forbidden)", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+}
+
+func (app *application) addCategory(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		name := r.FormValue("name")
+		if name == "" {
+			app.clientError(w, http.StatusBadRequest)
+			return
+		}
+
+		err := app.DB.AddCategory(name)
+		if err != nil {
+			app.serverError(w, err)
+			return
+		}
+		http.Redirect(w, r, "/catalog", http.StatusSeeOther)
+	}
+}
+
+func (app *application) createOrder(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
+	var input struct {
+		Email string             `json:"email"`
+		Items []models.OrderItem `json:"items"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	user := app.DB.FindOrCreateUser(input.Email)
+
+	newOrder := models.Order{
+		ID:     primitive.NewObjectID(),
+		UserID: user.ID,
+		Items:  input.Items,
+		Status: "Pending",
+	}
+
+	app.orderQueue <- newOrder
+
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Order placed successfully"})
 }

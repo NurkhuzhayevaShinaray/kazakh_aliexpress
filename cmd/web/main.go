@@ -40,10 +40,12 @@ func main() {
 
 	app := &application{
 		DB: &models.MongoDB{
-			Products: db.Collection("products"),
-			Reviews:  db.Collection("reviews"),
-			Users:    db.Collection("users"),
-			Orders:   db.Collection("orders"),
+			Products:   db.Collection("products"),
+			Reviews:    db.Collection("reviews"),
+			Users:      db.Collection("users"),
+			Orders:     db.Collection("orders"),
+			Categories: db.Collection("categories"),
+			Payments:   db.Collection("payments"),
 		},
 		orderQueue: make(chan models.Order, 20),
 		infoLog:    infoLog,
@@ -62,4 +64,5 @@ func main() {
 
 	infoLog.Println("Server running on http://localhost:8080")
 	errorLog.Fatal(srv.ListenAndServe())
+
 }
