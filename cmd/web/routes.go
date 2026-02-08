@@ -22,6 +22,7 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("/api/products", app.apiProducts)
 	mux.HandleFunc("/order", app.showOrder)
 	mux.HandleFunc("/payment/complete", app.completePayment)
+	mux.HandleFunc("/admin", app.requireRole("admin", app.adminDashboard))
 	mux.HandleFunc("/api/orders", app.apiListOrders)
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./ui/static/"))))

@@ -11,7 +11,7 @@
 
     <section style="margin: 20px 0; display: flex; gap: 15px;">
         <form action="/catalog" method="GET" style="display: flex; gap: 10px;">
-            <input type="text" name="search" placeholder="Search products...">
+            <input type="text" name="search" placeholder="Search products..." value="{{.SearchTerm}}">
 
             <select name="category">
                 <option value="">All Categories</option>
@@ -19,6 +19,16 @@
                     <option value="{{.ID.Hex}}">{{.Name}}</option>
                 {{end}}
             </select>
+            <div>
+                <label for="city">Аймақ (Region):</label>
+                <select name="city" id="city">
+                    <option value="">Барлық аймақтар (All Regions)</option>
+                    {{range .Cities}}
+                        <option value="{{.}}">{{.}}</option>
+                    {{end}}
+                </select>
+                <div>
+
 
             <button type="submit">Apply Filters</button>
         </form>
@@ -29,15 +39,20 @@
         <div class="product-grid">
             {{range .Products}}
                 <div class="card">
-                    <div class="card-header"><strong>{{.Name}}</strong></div>
+                    <div class="card-header">
+                        <strong>{{.Name}}</strong>
+                        <span style="font-size: 0.7rem; background: #eee; padding: 2px 5px; border-radius: 3px; float: right;">
+                            {{.City}}
+                        </span>
+                    </div>
                     <p>{{.Price}} ₸</p>
                     <div class="card-footer">
-                        <a href="/product?id={{.ID.Hex}}" class="btn-primary">View</a>
+                        <a href="/product?id={{.ID.Hex}}" class="btn-primary">Көру</a>
                     </div>
                 </div>
             {{else}}
                 <div style="text-align: center; padding: 20px; border: 2px dashed #ccc;">
-                    <p>No products found matching your search or category filter.</p>
+                    <p>No products found matching your search or category/city filter.</p>
                     <a href="/catalog">View All Products</a>
                 </div>
             {{end}}
@@ -62,6 +77,16 @@
             <input type="text" name="name" placeholder="Product Name" required>
             <input type="number" name="price" placeholder="Price (₸)" required>
 
+            <div>
+                <label for="city">Аймақ:</label>
+                <select name="city" id="city">
+                    <option value="">Барлық аймақтар (All Regions)</option>
+                    {{range .Cities}}
+                        <option value="{{.}}">{{.}}</option>
+                    {{end}}
+                </select>
+            </div>
+
             <label>Category:</label>
             <select name="category_id" id="category-select" onchange="toggleNewCategory()">
                 <option value="">-- Select Existing --</option>
@@ -78,7 +103,6 @@
             <button type="submit" style="margin-top: 15px;">Create Product</button>
         </form>
     </article>
-
     <script>
     function toggleNewCategory() {
         var select = document.getElementById("category-select");

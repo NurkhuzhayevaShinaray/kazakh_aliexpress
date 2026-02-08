@@ -144,7 +144,7 @@ func (m *MongoDB) CreatePayment(p Payment) error {
 	return err
 }
 
-func (m *MongoDB) GetFilteredProducts(search string, category string) ([]*Product, error) {
+func (m *MongoDB) GetFilteredProducts(search string, category string, city string) ([]*Product, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -160,6 +160,9 @@ func (m *MongoDB) GetFilteredProducts(search string, category string) ([]*Produc
 			filter["category_id"] = oid
 		}
 	}
+	if city != "" {
+		filter["city"] = city
+	}
 
 	var products []*Product
 	cursor, err := m.Products.Find(ctx, filter)
@@ -167,12 +170,30 @@ func (m *MongoDB) GetFilteredProducts(search string, category string) ([]*Produc
 		return nil, err
 	}
 	defer cursor.Close(ctx)
-
 	if err = cursor.All(ctx, &products); err != nil {
 		return nil, err
 	}
 
 	return products, nil
+}
+
+func (m *MongoDB) GetTotalRevenue() (float64, error) {
+	pipeline := []bson.M{
+		{"$match": bson.M{"status": "Completed"}},
+		{"$group": bson.M{"_id": nil, "total": bson.M{"$sum": "$amount"}}},
+	}
+
+	cursor, err := m.Payments.Aggregate(context.TODO(), pipeline)
+	if err != nil {
+		return 0, err
+	}
+
+	var results []bson.M
+	if err = cursor.All(context.TODO(), &results); err != nil || len(results) == 0 {
+		return 0, nil
+	}
+
+	return results[0]["total"].(float64), nil
 }
 
 func (m *MongoDB) GetOrder(id primitive.ObjectID) (*Order, error) {
@@ -209,4 +230,19 @@ func (m *MongoDB) UpdateOrderStatus(orderID primitive.ObjectID, status string) e
 		bson.M{"$set": bson.M{"status": status}},
 	)
 	return err
+}
+
+func (m *MongoDB) GetUniqueCities() ([]string, error) {
+	values, err := m.Products.Distinct(context.TODO(), "city", bson.M{})
+	if err != nil {
+		return nil, err
+	}
+
+	var cities []string
+	for _, v := range values {
+		if s, ok := v.(string); ok && s != "" {
+			cities = append(cities, s)
+		}
+	}
+	return cities, nil
 }

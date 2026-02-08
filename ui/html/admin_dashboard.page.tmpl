@@ -1,0 +1,46 @@
+{{template "base" .}}
+
+{{define "main"}}
+<div class="container">
+    <h2>Admin Analytics</h2>
+    <div class="grid">
+        <article>
+            <h5>Total Revenue</h5>
+            <p style="font-size: 2rem; color: green;">{{.TotalRevenue}} ₸</p>
+        </article>
+        <article>
+            <h5>Orders Processed</h5>
+            <p style="font-size: 2rem;">{{.TotalOrders}}</p>
+        </article>
+    </div>
+
+    <h3>Product Moderation</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>City</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Products}}
+            <tr>
+                <td>{{.Name}}</td>
+                <td>{{.Price}} ₸</td>
+                <td>{{.Stock}}</td>
+                <td>{{.City}}</td>
+                <td>
+                    <form action="/product/delete" method="POST" style="display:inline;">
+                        <input type="hidden" name="id" value="{{.ID.Hex}}">
+                        <button type="submit" class="secondary" style="padding: 5px 10px;">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

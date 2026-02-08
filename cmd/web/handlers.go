@@ -27,6 +27,21 @@ type templateData struct {
 	Categories   []*models.Category
 	SearchTerm   string
 	CategoryName string
+	TotalRevenue float64
+	TotalOrders  int
+	Cities       []string
+}
+
+func (app *application) adminDashboard(w http.ResponseWriter, r *http.Request) {
+	revenue, _ := app.DB.GetTotalRevenue()
+	products, _ := app.DB.GetAllProducts()
+	orders, _ := app.DB.GetAllOrders()
+
+	app.render(w, "admin_dashboard.page.tmpl", &templateData{
+		TotalRevenue: revenue,
+		Products:     products,
+		TotalOrders:  len(orders),
+	})
 }
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
@@ -272,12 +287,16 @@ func (app *application) deleteProduct(w http.ResponseWriter, r *http.Request) {
 func (app *application) catalogPage(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("search")
 	catID := r.URL.Query().Get("category")
+	city := r.URL.Query().Get("city")
 
-	var products []*models.Product
-	var err error
+	products, err := app.DB.GetFilteredProducts(search, catID, city)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
 
-	if search != "" || catID != "" {
-		products, err = app.DB.GetFilteredProducts(search, catID)
+	if search != "" || catID != "" || city != "" {
+		products, err = app.DB.GetFilteredProducts(search, catID, city)
 	} else {
 		products, err = app.DB.GetAllProducts()
 	}
@@ -288,6 +307,7 @@ func (app *application) catalogPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	categories, _ := app.DB.GetAllCategories()
+	cities, _ := app.DB.GetUniqueCities()
 
 	var selectedCatName string
 	for _, c := range categories {
@@ -301,6 +321,7 @@ func (app *application) catalogPage(w http.ResponseWriter, r *http.Request) {
 		Categories:   categories,
 		SearchTerm:   search,
 		CategoryName: selectedCatName,
+		Cities:       cities,
 	})
 }
 
@@ -322,6 +343,7 @@ func (app *application) createProduct(w http.ResponseWriter, r *http.Request) {
 	price, _ := strconv.ParseFloat(r.FormValue("price"), 64)
 	stock, _ := strconv.Atoi(r.FormValue("stock"))
 	categoryIDStr := r.FormValue("category_id")
+	city := r.FormValue("city")
 
 	var catOID primitive.ObjectID
 
@@ -349,6 +371,7 @@ func (app *application) createProduct(w http.ResponseWriter, r *http.Request) {
 		Price:      price,
 		Stock:      stock,
 		CategoryID: catOID,
+		City:       city,
 	}
 
 	_, err := app.DB.Products.InsertOne(context.TODO(), newProduct)
