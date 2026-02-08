@@ -84,10 +84,22 @@ func (m *MongoDB) CreateOrder(o Order) error {
 }
 
 func (m *MongoDB) GetAllOrders() ([]*Order, error) {
-	var o []*Order
-	cur, _ := m.Orders.Find(context.TODO(), bson.M{})
-	cur.All(context.TODO(), &o)
-	return o, nil
+	var orders []*Order
+	cursor, err := m.Orders.Find(context.TODO(), bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(context.TODO(), &orders)
+	return orders, err
+}
+
+func (m *MongoDB) UpdateOrderStatus(orderID primitive.ObjectID, status string) error {
+	_, err := m.Orders.UpdateOne(
+		context.TODO(),
+		bson.M{"_id": orderID},
+		bson.M{"$set": bson.M{"status": status}},
+	)
+	return err
 }
 
 func (m *MongoDB) GetAllProducts() ([]*Product, error) {
@@ -223,15 +235,6 @@ func (m *MongoDB) UpdatePaymentStatus(orderID primitive.ObjectID, status string,
 	return err
 }
 
-func (m *MongoDB) UpdateOrderStatus(orderID primitive.ObjectID, status string) error {
-	_, err := m.Orders.UpdateOne(
-		context.TODO(),
-		bson.M{"_id": orderID},
-		bson.M{"$set": bson.M{"status": status}},
-	)
-	return err
-}
-
 func (m *MongoDB) GetUniqueCities() ([]string, error) {
 	values, err := m.Products.Distinct(context.TODO(), "city", bson.M{})
 	if err != nil {
@@ -245,4 +248,20 @@ func (m *MongoDB) GetUniqueCities() ([]string, error) {
 		}
 	}
 	return cities, nil
+}
+
+func (m *MongoDB) DeleteUser(id primitive.ObjectID) error {
+	_, err := m.Users.DeleteOne(context.TODO(), bson.M{"_id": id})
+	return err
+}
+
+func (m *MongoDB) GetAllUsers() ([]*User, error) {
+	var users []*User
+	cursor, err := m.Users.Find(context.TODO(), bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.TODO())
+	err = cursor.All(context.TODO(), &users)
+	return users, err
 }

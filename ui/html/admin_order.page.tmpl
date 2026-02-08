@@ -1,0 +1,36 @@
+{{template "base" .}}
+{{define "main"}}
+<div class="container">
+    <h2>Order Management (Tracking)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Order ID</th>
+                <th>Current Status</th>
+                <th>Total</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Orders}}
+            <tr>
+                <td>{{.ID.Hex}}</td>
+                <td><mark>{{.Status}}</mark></td>
+                <td>{{.TotalPrice}} ₸</td>
+                <td>
+                    <form action="/admin/orders/update" method="POST">
+                        <input type="hidden" name="id" value="{{.ID.Hex}}">
+                        <select name="status">
+                            <option value="Processing">Processing</option>
+                            <option value="Shipped">Shipped</option>
+                            <option value="Delivered">Delivered</option>
+                        </select>
+                        <button type="submit">Update</button>
+                    </form>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

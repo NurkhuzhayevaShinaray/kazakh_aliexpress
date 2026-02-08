@@ -1,0 +1,36 @@
+{{template "base" .}}
+
+{{define "main"}}
+<div class="container">
+    <h2>User Management</h2>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <thead>
+            <tr style="background-color: #f4f4f4; text-align: left;">
+                <th>User ID</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Users}}
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td>{{.ID.Hex}}</td>
+                <td>{{.Email}}</td>
+                <td><mark>{{.Role}}</mark></td>
+                <td>
+                    <form action="/admin/users/delete" method="POST" style="display:inline;">
+                        <input type="hidden" name="id" value="{{.ID.Hex}}">
+                        <button type="submit" style="background-color: #dc3545; color: white; padding: 5px 10px;">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {{else}}
+            <tr><td colspan="4">No users found.</td></tr>
+            {{end}}
+        </tbody>
+    </table>
+    <br>
+    <a href="/admin/dashboard" class="btn-secondary">Back to Analytics</a>
+</div>
+{{end}}

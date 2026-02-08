@@ -247,15 +247,14 @@ func (app *application) loginUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) listUsers(w http.ResponseWriter, r *http.Request) {
-	var users []*models.User
-	cur, _ := app.DB.Users.Find(context.TODO(), bson.M{})
-	cur.All(context.TODO(), &users)
-	app.render(w, "users.page.tmpl", &templateData{Users: users})
-}
-
-func (app *application) adminProducts(w http.ResponseWriter, r *http.Request) {
-	products, _ := app.DB.GetAllProducts()
-	app.render(w, "admin_products.page.tmpl", &templateData{Products: products})
+	users, err := app.DB.GetAllUsers()
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	app.render(w, "admin_users.page.tmpl", &templateData{
+		Users: users,
+	})
 }
 
 func (app *application) updateProduct(w http.ResponseWriter, r *http.Request) {
@@ -534,5 +533,77 @@ func (app *application) completePayment(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	err = app.DB.UpdateOrderStatus(oid, "Processing")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
 	http.Redirect(w, r, "/order?id="+orderIDHex, http.StatusSeeOther)
+}
+
+func (app *application) deleteUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
+	id := r.FormValue("id")
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	err = app.DB.DeleteUser(oid)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
+}
+
+// adminProducts renders a page specifically for managing products
+func (app *application) adminProducts(w http.ResponseWriter, r *http.Request) {
+	products, err := app.DB.GetAllProducts()
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	app.render(w, "admin_dashboard.page.tmpl", &templateData{
+		Products: products,
+	})
+}
+
+func (app *application) adminOrders(w http.ResponseWriter, r *http.Request) {
+	orders, err := app.DB.GetAllOrders()
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	app.render(w, "admin_orders.page.tmpl", &templateData{
+		Orders: orders,
+	})
+}
+
+func (app *application) updateOrderStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
+	id := r.FormValue("id")
+	status := r.FormValue("status")
+	oid, _ := primitive.ObjectIDFromHex(id)
+
+	err := app.DB.UpdateOrderStatus(oid, status)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/admin/orders", http.StatusSeeOther)
 }

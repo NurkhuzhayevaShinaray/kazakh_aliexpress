@@ -3,9 +3,18 @@
 {{define "main"}}
     <div class="container">
         <article>
-            <header>
-                <h1 style="color: #00afca;">Order #{{.Order.ID.Hex}}</h1>
-            </header>
+           <header>
+               <h1 style="color: #00afca;">Order #{{.Order.ID.Hex}}</h1>
+               <div class="tracking-visual">
+                   <p>Order Status: <strong>{{.Order.Status}}</strong></p>
+                   <div style="display: flex; justify-content: space-between; margin-top: 10px; background: #eee; padding: 10px;">
+                       <span style="{{if eq .Order.Status "Pending"}}color: blue; font-weight: bold;{{end}}">Placed</span> →
+                       <span style="{{if eq .Order.Status "Processing"}}color: blue; font-weight: bold;{{end}}">Processing</span> →
+                       <span style="{{if eq .Order.Status "Shipped"}}color: blue; font-weight: bold;{{end}}">In Transit</span> →
+                       <span style="{{if eq .Order.Status "Delivered"}}color: green; font-weight: bold;{{end}}">Delivered</span>
+                   </div>
+               </div>
+           </header>
 
             <h3>Items Ordered</h3>
             <ul>
