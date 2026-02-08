@@ -132,3 +132,38 @@ input, select, textarea {
     border-radius: 6px;
     background-color: #f9f9f9;
 }
+
+/* Dropdown logic */
+.admin-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    background-color: var(--bg-card);
+    min-width: 160px;
+    box-shadow: var(--shadow);
+    z-index: 1;
+    list-style: none;
+    padding: 10px 0;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.dropdown-menu li a {
+    padding: 8px 16px;
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-dark);
+}
+
+.admin-dropdown:hover .dropdown-menu {
+    display: block;
+}
+
+.dropdown-menu li a:hover {
+    background-color: #f8f9fa;
+    color: var(--kz-blue) !important;
+}

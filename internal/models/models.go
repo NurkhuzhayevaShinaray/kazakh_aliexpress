@@ -53,10 +53,12 @@ type Payment struct {
 }
 
 type Product struct {
-	ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	Name       string             `bson:"name" json:"name"`
-	Price      float64            `bson:"price" json:"price"`
-	Stock      int                `bson:"stock" json:"stock"`
-	CategoryID primitive.ObjectID `bson:"category_id" json:"category_id"`
-	City       string             `bson:"city" json:"city"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:id`
+	Name        string             `bson:"name" json:"name"`
+	Price       float64            `bson:"price" json:"price"`
+	Stock       int                `bson:"stock" json:"stock"`
+	City        string             `bson:"city" json:"city"`
+	CategoryID  primitive.ObjectID `bson:"category_id" json:"category_id"`
+	SellerID    primitive.ObjectID `bson:"seller_id" json:"seller_id"` // NEW FIELD
+	Description string             `bson:"description" json:"description"`
 }

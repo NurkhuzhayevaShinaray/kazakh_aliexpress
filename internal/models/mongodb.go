@@ -30,18 +30,6 @@ func (m *MongoDB) GetProductByOID(id primitive.ObjectID) (*Product, error) {
 	return &p, err
 }
 
-func (m *MongoDB) FindOrCreateUser(email string) *User {
-	var u User
-	err := m.Users.FindOne(context.TODO(), bson.M{"email": email}).Decode(&u)
-	if err == nil {
-		return &u
-	}
-	u = User{Email: email, Role: "buyer"}
-	res, _ := m.Users.InsertOne(context.TODO(), u)
-	u.ID = res.InsertedID.(primitive.ObjectID)
-	return &u
-}
-
 func (m *MongoDB) AddReview(r Review) {
 	r.CreatedAt = time.Now()
 	m.Reviews.InsertOne(context.TODO(), r)
@@ -264,4 +252,59 @@ func (m *MongoDB) GetAllUsers() ([]*User, error) {
 	defer cursor.Close(context.TODO())
 	err = cursor.All(context.TODO(), &users)
 	return users, err
+}
+
+func (m *MongoDB) FindOrCreateUser(email string) *User {
+	var u User
+	err := m.Users.FindOne(context.TODO(), bson.M{"email": email}).Decode(&u)
+	if err == nil {
+		return &u
+	}
+
+	// Assign roles based on email for testing
+	role := "buyer"
+	if email == "admin@kazakh.kz" {
+		role = "admin"
+	} else if email == "seller@kazakh.kz" {
+		role = "seller"
+	}
+
+	u = User{
+		ID:        primitive.NewObjectID(),
+		Email:     email,
+		Role:      role,
+		CreatedAt: time.Now(),
+	}
+
+	m.Users.InsertOne(context.TODO(), u)
+	return &u
+}
+
+func (m *MongoDB) GetSellerProducts(sellerID primitive.ObjectID) ([]*Product, error) {
+	var products []*Product
+	cursor, err := m.Products.Find(context.TODO(), bson.M{"seller_id": sellerID})
+	if err != nil {
+		return nil, err
+	}
+	err = cursor.All(context.TODO(), &products)
+	return products, err
+}
+
+func (m *MongoDB) GetProductsBySeller(sellerID primitive.ObjectID) ([]*Product, error) {
+	var products []*Product
+
+	// The filter key must match the string in your struct: bson:"seller_id"
+	filter := bson.M{"seller_id": sellerID}
+
+	cur, err := m.Products.Find(context.TODO(), filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(context.TODO())
+
+	if err := cur.All(context.TODO(), &products); err != nil {
+		return nil, err
+	}
+
+	return products, nil
 }

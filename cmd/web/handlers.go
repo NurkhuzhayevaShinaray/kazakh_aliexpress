@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -32,6 +33,32 @@ type templateData struct {
 	TotalRevenue float64
 	TotalOrders  int
 	Cities       []string
+}
+
+func (app *application) sellerDashboard(w http.ResponseWriter, r *http.Request) {
+	// 1. Get ID (Use the one from your MongoDB Compass)
+	sellerID, err := primitive.ObjectIDFromHex("698884b6ca52a7ff2376d549")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	// 2. ЗАМЕНИ ЭТУ СТРОКУ (используй sellerID здесь):
+	products, err := app.DB.GetProductsBySeller(sellerID) // Теперь переменная используется!
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	// 3. IMPORTANT: If products is nil, initialize it as an empty slice
+	// so the template {{range}} doesn't panic
+	if products == nil {
+		products = []*models.Product{}
+	}
+
+	app.render(w, "seller_dashboard.page.tmpl", &templateData{
+		Products: products,
+	})
 }
 
 func (app *application) adminDashboard(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +108,7 @@ func (app *application) showOrder(w http.ResponseWriter, r *http.Request) {
 
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		app.notFound(w)
+		app.serverError(w, err)
 		return
 	}
 
@@ -172,23 +199,32 @@ func (app *application) apiCreateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) render(w http.ResponseWriter, page string, data *templateData) {
+	// Define files
 	files := []string{
 		"./ui/html/base.layout.tmpl",
 		"./ui/html/" + page,
 	}
 
+	// 1. Parse the files
 	ts, err := template.ParseFiles(files...)
 	if err != nil {
-		app.serverError(w, fmt.Errorf("could not parse templates: %v", err))
+		app.serverError(w, fmt.Errorf("TEMPLATE ERROR: %v", err))
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// 2. USE A BUFFER - This is the secret to fixing the 'superfluous' error
+	buf := new(bytes.Buffer)
 
-	err = ts.ExecuteTemplate(w, "base", data)
+	// 3. Execute to the BUFFER first
+	err = ts.ExecuteTemplate(buf, "base", data)
 	if err != nil {
 		app.serverError(w, err)
+		return // Stop here if it fails!
 	}
+
+	// 4. If we reach here, it's safe to send to the browser
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	buf.WriteTo(w)
 }
 
 func (app *application) register(w http.ResponseWriter, r *http.Request) {
@@ -349,6 +385,8 @@ func (app *application) createProduct(w http.ResponseWriter, r *http.Request) {
 	stock, _ := strconv.Atoi(r.FormValue("stock"))
 	categoryIDStr := r.FormValue("category_id")
 	city := r.FormValue("city")
+	description := r.PostForm.Get("description")
+	sellerID, _ := primitive.ObjectIDFromHex("698884b6ca52a7ff2376d549")
 
 	var catOID primitive.ObjectID
 
@@ -371,12 +409,14 @@ func (app *application) createProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newProduct := models.Product{
-		ID:         primitive.NewObjectID(),
-		Name:       r.FormValue("name"),
-		Price:      price,
-		Stock:      stock,
-		CategoryID: catOID,
-		City:       city,
+		ID:          primitive.NewObjectID(),
+		Name:        r.FormValue("name"),
+		Price:       price,
+		Stock:       stock,
+		CategoryID:  catOID,
+		City:        city,
+		Description: description,
+		SellerID:    sellerID,
 	}
 
 	_, err := app.DB.Products.InsertOne(context.TODO(), newProduct)
