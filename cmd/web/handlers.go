@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -85,7 +87,11 @@ func (app *application) showOrder(w http.ResponseWriter, r *http.Request) {
 
 	order, err := app.DB.GetOrder(oid)
 	if err != nil {
-		app.serverError(w, err)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			app.notFound(w)
+		} else {
+			app.serverError(w, err)
+		}
 		return
 	}
 
@@ -459,6 +465,7 @@ func (app *application) createOrder(w http.ResponseWriter, r *http.Request) {
 
 	productOID, _ := primitive.ObjectIDFromHex(productIDHex)
 	user := app.DB.FindOrCreateUser(email)
+
 	orderID := primitive.NewObjectID()
 
 	product, _ := app.DB.GetProductByOID(productOID)
@@ -485,6 +492,13 @@ func (app *application) createOrder(w http.ResponseWriter, r *http.Request) {
 		Amount:    totalPrice,
 		Status:    "Pending",
 		CreatedAt: time.Now(),
+	}
+
+	_, err = app.DB.Orders.InsertOne(r.Context(), newOrder)
+
+	if err != nil {
+		app.serverError(w, err)
+		return
 	}
 
 	err = app.DB.CreatePayment(payment)
