@@ -135,17 +135,13 @@ func (m *MongoDB) GetAllCategories() ([]*Category, error) {
 	return cats, err
 }
 
-func (m *MongoDB) CreatePayment(orderID primitive.ObjectID, amount float64, method string) (primitive.ObjectID, error) {
-	payment := Payment{
-		ID:        primitive.NewObjectID(),
-		OrderID:   orderID,
-		Amount:    amount,
-		Status:    "Pending",
-		Method:    method,
-		CreatedAt: time.Now(),
+func (m *MongoDB) CreatePayment(p Payment) error {
+	p.CreatedAt = time.Now()
+	if p.ID.IsZero() {
+		p.ID = primitive.NewObjectID()
 	}
-	res, err := m.Payments.InsertOne(context.TODO(), payment)
-	return res.InsertedID.(primitive.ObjectID), err
+	_, err := m.Payments.InsertOne(context.TODO(), p)
+	return err
 }
 
 func (m *MongoDB) GetFilteredProducts(search string, category string) ([]*Product, error) {
@@ -177,4 +173,40 @@ func (m *MongoDB) GetFilteredProducts(search string, category string) ([]*Produc
 	}
 
 	return products, nil
+}
+
+func (m *MongoDB) GetOrder(id primitive.ObjectID) (*Order, error) {
+	var o Order
+	err := m.Orders.FindOne(context.TODO(), bson.M{"_id": id}).Decode(&o)
+	if err != nil {
+		return nil, err
+	}
+	return &o, nil
+}
+
+func (m *MongoDB) GetPaymentByOrderID(orderID primitive.ObjectID) (*Payment, error) {
+	var p Payment
+	err := m.Payments.FindOne(context.TODO(), bson.M{"order_id": orderID}).Decode(&p)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+func (m *MongoDB) UpdatePaymentStatus(orderID primitive.ObjectID, status string, method string) error {
+	_, err := m.Payments.UpdateOne(
+		context.TODO(),
+		bson.M{"order_id": orderID},
+		bson.M{"$set": bson.M{"status": status, "method": method, "updated_at": time.Now()}},
+	)
+	return err
+}
+
+func (m *MongoDB) UpdateOrderStatus(orderID primitive.ObjectID, status string) error {
+	_, err := m.Orders.UpdateOne(
+		context.TODO(),
+		bson.M{"_id": orderID},
+		bson.M{"$set": bson.M{"status": status}},
+	)
+	return err
 }

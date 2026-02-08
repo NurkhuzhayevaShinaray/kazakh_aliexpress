@@ -6,6 +6,7 @@
                 <header>Order #{{.ID.Hex}}</header>
                 <p>Status: <mark>{{.Status}}</mark></p>
                 <p>Total: <strong>{{.TotalPrice}} ₸</strong></p>
+                <td><a href="/order?id={{.ID.Hex}}">View Payment Details</a></td>
                 <footer>Ordered on: {{.CreatedAt.Format "Jan 02, 2006"}}</footer>
             </article>
         {{else}}

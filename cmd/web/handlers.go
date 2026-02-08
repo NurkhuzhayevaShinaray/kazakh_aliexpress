@@ -21,6 +21,8 @@ type templateData struct {
 	Product      *models.Product
 	Reviews      []*models.Review
 	Orders       []*models.Order
+	Order        *models.Order
+	Payment      *models.Payment
 	Users        []*models.User
 	Categories   []*models.Category
 	SearchTerm   string
@@ -53,6 +55,33 @@ func (app *application) showProduct(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (app *application) showOrder(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		app.notFound(w)
+		return
+	}
+
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		app.notFound(w)
+		return
+	}
+
+	order, err := app.DB.GetOrder(oid)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	payment, _ := app.DB.GetPaymentByOrderID(oid)
+
+	app.render(w, "order_details.page.tmpl", &templateData{
+		Order:   order,
+		Payment: payment,
+	})
+}
+
 func (app *application) addReview(w http.ResponseWriter, r *http.Request) {
 	pid, _ := primitive.ObjectIDFromHex(r.FormValue("product_id"))
 	user := app.DB.FindOrCreateUser(r.FormValue("email"))
@@ -74,10 +103,51 @@ func (app *application) apiProducts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) apiCreateOrder(w http.ResponseWriter, r *http.Request) {
+
 	var o models.Order
-	json.NewDecoder(r.Body).Decode(&o)
+
+	if err := json.NewDecoder(r.Body).Decode(&o); err != nil {
+
+		app.clientError(w, http.StatusBadRequest)
+
+		return
+
+	}
+
+	if o.ID.IsZero() {
+
+		o.ID = primitive.NewObjectID()
+
+	}
+
+	payment := models.Payment{
+
+		OrderID: o.ID,
+
+		Amount: o.TotalPrice,
+
+		Status: "Pending",
+
+		Method: "API_EXTERNAL",
+	}
+
+	if err := app.DB.CreatePayment(payment); err != nil {
+
+		app.serverError(w, err)
+
+		return
+
+	}
+
 	app.orderQueue <- o
-	json.NewEncoder(w).Encode(map[string]string{"status": "queued"})
+
+	json.NewEncoder(w).Encode(map[string]string{
+
+		"status": "queued",
+
+		"order_id": o.ID.Hex(),
+	})
+
 }
 
 func (app *application) render(w http.ResponseWriter, page string, data *templateData) {
@@ -354,28 +424,78 @@ func (app *application) createOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var input struct {
-		Email string             `json:"email"`
-		Items []models.OrderItem `json:"items"`
-	}
-
-	err := json.NewDecoder(r.Body).Decode(&input)
+	err := r.ParseForm()
 	if err != nil {
 		app.clientError(w, http.StatusBadRequest)
 		return
 	}
 
-	user := app.DB.FindOrCreateUser(input.Email)
+	email := r.FormValue("email")
+	productIDHex := r.FormValue("product_id")
+	qty, _ := strconv.Atoi(r.FormValue("qty"))
+
+	productOID, _ := primitive.ObjectIDFromHex(productIDHex)
+	user := app.DB.FindOrCreateUser(email)
+	orderID := primitive.NewObjectID()
+
+	product, _ := app.DB.GetProductByOID(productOID)
+	totalPrice := product.Price * float64(qty)
 
 	newOrder := models.Order{
-		ID:     primitive.NewObjectID(),
-		UserID: user.ID,
-		Items:  input.Items,
-		Status: "Pending",
+		ID:         orderID,
+		UserID:     user.ID,
+		Status:     "Pending",
+		TotalPrice: totalPrice,
+		Items: []models.OrderItem{
+			{
+				ProductID: productOID,
+				Quantity:  qty,
+				UnitPrice: product.Price,
+			},
+		},
+		CreatedAt: time.Now(),
+	}
+
+	payment := models.Payment{
+		ID:        primitive.NewObjectID(),
+		OrderID:   orderID,
+		Amount:    totalPrice,
+		Status:    "Pending",
+		CreatedAt: time.Now(),
+	}
+
+	err = app.DB.CreatePayment(payment)
+	if err != nil {
+		app.serverError(w, err)
+		return
 	}
 
 	app.orderQueue <- newOrder
 
-	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Order placed successfully"})
+	http.Redirect(w, r, "/order?id="+orderID.Hex(), http.StatusSeeOther)
+}
+
+func (app *application) completePayment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		app.clientError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
+	orderIDHex := r.FormValue("order_id")
+	method := r.FormValue("method")
+	oid, _ := primitive.ObjectIDFromHex(orderIDHex)
+
+	err := app.DB.UpdatePaymentStatus(oid, "Completed", method)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	err = app.DB.UpdateOrderStatus(oid, "Paid")
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/order?id="+orderIDHex, http.StatusSeeOther)
 }

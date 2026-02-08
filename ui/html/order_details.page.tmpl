@@ -1,0 +1,44 @@
+{{template "base" .}}
+
+{{define "main"}}
+    <div class="container">
+        <article>
+            <header>
+                <h1 style="color: #00afca;">Order #{{.Order.ID.Hex}}</h1>
+            </header>
+
+            <h3>Items Ordered</h3>
+            <ul>
+                {{range .Order.Items}}
+                    <li>Product ID: {{.ProductID.Hex}} — {{.Quantity}} x {{.UnitPrice}} ₸</li>
+                {{end}}
+            </ul>
+            <p><strong>Total Price: {{.Order.TotalPrice}} ₸</strong></p>
+
+            <hr>
+
+            <h3 style="color: #2c3e50;">Payment Status</h3>
+            <hr>
+            {{if eq .Payment.Status "Pending"}}
+                <h3>Complete Your Payment</h3>
+                <form action="/payment/complete" method="POST">
+                    <input type="hidden" name="order_id" value="{{.Order.ID.Hex}}">
+
+                    <label for="method">Select Payment Method:</label>
+                    <select name="method" id="method">
+                        <option value="Kaspi">Kaspi.kz (QR)</option>
+                        <option value="Card">Visa / MasterCard</option>
+                        <option value="Cash">Cash on Delivery</option>
+                    </select>
+
+                    <button type="submit" style="background-color: #28a745;">Confirm Payment of {{.Payment.Amount}} ₸</button>
+                </form>
+            {{else}}
+                <p style="color: green; font-weight: bold;">✅ This order has been paid via {{.Payment.Method}}.</p>
+            {{end}}
+
+            <br>
+            <a href="/orders" role="button" class="outline">Back to Orders</a>
+        </article>
+    </div>
+{{end}}
