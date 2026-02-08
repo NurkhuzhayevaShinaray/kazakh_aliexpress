@@ -16,14 +16,16 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("/order/create", app.createOrder)
 	mux.HandleFunc("/review/add", app.addReview)
 
-	mux.HandleFunc("/admin/users", app.requireRole("admin", app.listUsers))
 	mux.HandleFunc("/category/add", app.addCategory)
 
 	mux.HandleFunc("/api/products", app.apiProducts)
 	mux.HandleFunc("/order", app.showOrder)
 	mux.HandleFunc("/payment/complete", app.completePayment)
-	mux.HandleFunc("/admin", app.requireRole("admin", app.adminDashboard))
 	mux.HandleFunc("/api/orders", app.apiListOrders)
+
+	mux.HandleFunc("/admin", app.requireRole("admin", app.adminDashboard))
+	mux.HandleFunc("/admin/dashboard", app.requireRole("admin", app.adminDashboard))
+	mux.HandleFunc("/admin/users", app.requireRole("admin", app.listUsers))
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./ui/static/"))))
 	return app.logRequest(app.recoverPanic(mux))
