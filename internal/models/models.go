@@ -22,21 +22,22 @@ type Review struct {
 	Comment   string
 	CreatedAt time.Time
 }
+
 type Order struct {
-	ID         primitive.ObjectID `bson:"_id,omitempty"`
-	UserID     primitive.ObjectID
-	Status     string
-	TotalPrice float64
-	Items      []OrderItem
-	CreatedAt  time.Time
+	ID            primitive.ObjectID `bson:"_id,omitempty"`
+	UserID        primitive.ObjectID `bson:"userid"`
+	Status        string             `bson:"status"`
+	TotalPrice    float64            `bson:"total_price"`
+	PaymentMethod string             `bson:"payment_method"` // ДОБАВЬ ЭТУ СТРОКУ
+	Items         []OrderItem        `bson:"items"`
+	CreatedAt     time.Time          `bson:"created_at"`
 }
 
 type OrderItem struct {
-	ProductID primitive.ObjectID `bson:"product_id"`
+	ProductID primitive.ObjectID `bson:"productid"` // Убери подчеркивание
 	Quantity  int                `bson:"quantity"`
-	UnitPrice float64            `bson:"unit_price"`
+	UnitPrice float64            `bson:"unitprice"` // Убери подчеркивание
 }
-
 type Category struct {
 	ID   primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Name string             `bson:"name" json:"name"`
@@ -64,6 +65,6 @@ type Product struct {
 type Cart struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty"`
 	UserID     primitive.ObjectID `bson:"user_id"`
-	Items      []CartItem         `bson:"items"`
+	Items      []*CartItem        `bson:"-"` // Поле для хранения списка в памяти
 	TotalPrice float64            `bson:"total_price"`
 }

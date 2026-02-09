@@ -33,14 +33,21 @@
             </tbody>
         </table>
 
-        <div style="align-self: flex-end; text-align: right; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-            <p style="font-size: 1.2rem; margin-bottom: 15px;">Grand Total: <strong>{{.Cart.TotalPrice}} ₸</strong></p>
-            <form action="/payment/complete" method="POST">
-                <input type="hidden" name="amount" value="{{.Cart.TotalPrice}}">
-                <button type="submit" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Pay Now & Checkout
-                </button>
-            </form>
+        <div style="margin-top: 15px; text-align: left;">
+            <label for="payment_method"><strong>Choose Payment Method:</strong></label>
+            <select name="payment_method" id="payment_method" form="checkout-form" style="width: 100%; padding: 8px; margin-top: 5px;">
+                <option value="Credit Card">Credit Card</option>
+                <option value="Kaspi.kz">Kaspi.kz</option>
+                <option value="Cash on Delivery">Cash on Delivery</option>
+            </select>
+        </div>
+
+        <form action="/order/create" method="POST" id="checkout-form">
+            <input type="hidden" name="amount" value="{{.Cart.TotalPrice}}">
+            <button type="submit" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">
+                Pay Now & Checkout
+            </button>
+        </form>
         </div>
     </div>
     {{else}}

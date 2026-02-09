@@ -17,17 +17,6 @@ func (app *application) requireAuthentication(next http.Handler) http.Handler {
 	})
 }
 
-func (app *application) requireRole(role string, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userRole := app.session.GetString(r.Context(), "userRole")
-		if userRole != role {
-			http.Error(w, "Forbidden: You do not have the correct role", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 func (app *application) logRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		app.infoLog.Printf("%s - %s %s %s", r.RemoteAddr, r.Proto, r.Method, r.URL.RequestURI())
@@ -46,5 +35,20 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 		}()
 
 		next.ServeHTTP(w, r)
+	})
+}
+
+func (app *application) requireRole(roles []string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userRole := app.session.GetString(r.Context(), "userRole")
+
+		for _, roleName := range roles {
+			if userRole == roleName {
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+
+		http.Error(w, "Forbidden: You do not have the correct role", http.StatusForbidden)
 	})
 }

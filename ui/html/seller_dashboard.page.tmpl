@@ -24,12 +24,13 @@
                     <input type="text" name="city" placeholder="e.g., Almaty" required>
                 </div>
                 <div>
-                    <label>Category</label>
-                    <select name="category_id">
-                        {{range .Categories}}
-                            <option value="{{.ID.Hex}}">{{.Name}}</option>
-                        {{end}}
-                    </select>
+                   <label>Category</label>
+                   <select name="category_id" required>
+                       <option value="" disabled selected>Select a category</option>
+                       {{range .Categories}}
+                           <option value="{{.ID.Hex}}">{{.Name}}</option>
+                       {{end}}
+                   </select>
                 </div>
             </div>
             <div style="margin-top: 15px;">
@@ -48,7 +49,7 @@
                     <th>Product Name</th>
                     <th>Price</th>
                     <th>City</th>
-                    <th>Action</th>
+                    <th style="text-align: right;">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -58,19 +59,29 @@
                     <td>{{.Price}} ₸</td>
                     <td>{{.City}}</td>
                     <td>
-                        <form action="/product/delete" method="POST" style="margin:0;">
-                            <input type="hidden" name="id" value="{{.ID.Hex}}">
-                            <button type="submit" style="background-color: #e74c3c; padding: 5px 10px; font-size: 0.8em;">Delete</button>
-                        </form>
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <a href="/product/update?id={{.ID.Hex}}"
+                               style="padding: 6px 12px; background-color: #fcd116; color: #333; text-decoration: none; border-radius: 4px; font-size: 0.8em; font-weight: bold;">
+                                Edit
+                            </a>
+
+                            <form action="/product/delete" method="POST" style="margin:0;" onsubmit="return confirm('Delete this product?');">
+                                <input type="hidden" name="id" value="{{.ID.Hex}}">
+                                <button type="submit" style="background-color: #e74c3c; padding: 6px 12px; font-size: 0.8em; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    Delete
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {{else}}
                 <tr>
-                    <td colspan="4">You haven't listed any products yet.</td>
+                    <td colspan="4" style="text-align: center; padding: 20px; color: #666;">You haven't listed any products yet.</td>
                 </tr>
                 {{end}}
             </tbody>
         </table>
     </article>
+
 </div>
 {{end}}

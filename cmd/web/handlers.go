@@ -8,10 +8,11 @@ import (
 	"strconv"
 	"time"
 
+	"kazakh_aliexpress/internal/models"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"kazakh_aliexpress/internal/models"
 )
 
 func (app *application) addDefaultData(td *TemplateData, r *http.Request) *TemplateData {
@@ -105,28 +106,6 @@ func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	app.render(w, r, "home.page.tmpl", &TemplateData{Products: products})
 }
 
-func (app *application) catalogPage(w http.ResponseWriter, r *http.Request) {
-	products, _ := app.DB.GetAllProducts()
-	categories, _ := app.DB.GetAllCategories()
-	cities, _ := app.DB.GetUniqueCities()
-	app.render(w, r, "catalog.page.tmpl", &TemplateData{
-		Products:   products,
-		Categories: categories,
-		Cities:     cities,
-	})
-}
-
-func (app *application) showProduct(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
-	p, err := app.DB.GetProduct(id)
-	if err != nil {
-		app.clientError(w, http.StatusNotFound)
-		return
-	}
-	revs, _ := app.DB.GetReviews(p.ID)
-	app.render(w, r, "show.page.tmpl", &TemplateData{Product: p, Reviews: revs})
-}
-
 func (app *application) listOrdersPage(w http.ResponseWriter, r *http.Request) {
 	userIDHex := app.session.GetString(r.Context(), "authenticatedUserID")
 	userID, _ := primitive.ObjectIDFromHex(userIDHex)
@@ -138,33 +117,6 @@ func (app *application) listOrdersPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.render(w, r, "orders.page.tmpl", &TemplateData{Orders: orders})
-}
-
-func (app *application) createOrder(w http.ResponseWriter, r *http.Request) {
-	uidHex := app.session.GetString(r.Context(), "authenticatedUserID")
-	uid, _ := primitive.ObjectIDFromHex(uidHex)
-	pid, _ := primitive.ObjectIDFromHex(r.FormValue("product_id"))
-
-	p, err := app.DB.GetProductByOID(pid)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	order := models.Order{
-		ID:         primitive.NewObjectID(),
-		UserID:     uid,
-		Status:     "Pending",
-		TotalPrice: p.Price,
-		CreatedAt:  time.Now(),
-	}
-
-	_, err = app.DB.Orders.InsertOne(r.Context(), order)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-	http.Redirect(w, r, "/orders", http.StatusSeeOther)
 }
 
 func (app *application) showOrder(w http.ResponseWriter, r *http.Request) {
@@ -196,31 +148,51 @@ func (app *application) addReview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) sellerDashboard(w http.ResponseWriter, r *http.Request) {
-	sid, _ := primitive.ObjectIDFromHex(app.session.GetString(r.Context(), "authenticatedUserID"))
-	products, _ := app.DB.GetProductsBySeller(sid)
-	app.render(w, r, "seller_dashboard.page.tmpl", &TemplateData{Products: products})
+	sellerIDHex := app.session.GetString(r.Context(), "authenticatedUserID")
+	sellerID, _ := primitive.ObjectIDFromHex(sellerIDHex)
+
+	var products []*models.Product
+	cursor, err := app.DB.Products.Find(r.Context(), bson.M{"seller_id": sellerID})
+	if err == nil {
+		cursor.All(r.Context(), &products)
+	}
+
+	categories, err := app.DB.GetAllCategories()
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	data := &TemplateData{
+		Products:   products,
+		Categories: categories,
+	}
+
+	app.render(w, r, "seller_dashboard.page.tmpl", data)
 }
 
 func (app *application) createProduct(w http.ResponseWriter, r *http.Request) {
 	sellerIDHex := app.session.GetString(r.Context(), "authenticatedUserID")
 	sellerID, _ := primitive.ObjectIDFromHex(sellerIDHex)
 	price, _ := strconv.ParseFloat(r.FormValue("price"), 64)
-	catID, _ := primitive.ObjectIDFromHex(r.FormValue("category_id"))
+	catIDHex := r.PostFormValue("category_id")
+
+	catID, err := primitive.ObjectIDFromHex(catIDHex)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
 
 	newP := models.Product{
-		ID: primitive.NewObjectID(), Name: r.FormValue("name"), Price: price,
-		Stock: 10, City: r.FormValue("city"), CategoryID: catID,
-		SellerID: sellerID, Description: r.FormValue("description"),
+		ID:    primitive.NewObjectID(),
+		Name:  r.FormValue("name"),
+		Price: price,
+		Stock: 10, City: r.FormValue("city"),
+		CategoryID: catID,
+		SellerID:   sellerID, Description: r.FormValue("description"),
 	}
 	app.DB.Products.InsertOne(r.Context(), newP)
 	http.Redirect(w, r, "/seller/dashboard", http.StatusSeeOther)
-}
-
-func (app *application) updateProduct(w http.ResponseWriter, r *http.Request) {
-	id, _ := primitive.ObjectIDFromHex(r.FormValue("id"))
-	price, _ := strconv.ParseFloat(r.FormValue("price"), 64)
-	app.DB.Products.UpdateOne(r.Context(), bson.M{"_id": id}, bson.M{"$set": bson.M{"price": price}})
-	http.Redirect(w, r, "/catalog", http.StatusSeeOther)
 }
 
 func (app *application) deleteProduct(w http.ResponseWriter, r *http.Request) {
@@ -278,104 +250,37 @@ func (app *application) apiListOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) showCart(w http.ResponseWriter, r *http.Request) {
-	uidHex := app.session.GetString(r.Context(), "authenticatedUserID")
-	uid, _ := primitive.ObjectIDFromHex(uidHex)
+	userIDStr := app.session.GetString(r.Context(), "authenticatedUserID")
+	userID, _ := primitive.ObjectIDFromHex(userIDStr)
 
-	cartItems, err := app.DB.GetUserCart(uid)
+	// 1. Получаем список товаров из базы
+	cartItems, err := app.DB.GetUserCart(userID)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
 
-	displayCart := &models.Cart{
-		Items:      []models.CartItem{},
-		TotalPrice: 0,
-	}
-
+	// 2. Считаем общую сумму
+	// Мы пересчитываем Total на лету, чтобы не зависеть от багов в БД
+	var grandTotal float64
 	for _, item := range cartItems {
-		product, err := app.DB.GetProductByOID(item.ProductID)
-		if err != nil {
-			continue
-		}
-
-		lineTotal := product.Price * float64(item.Quantity)
-
-		displayCart.Items = append(displayCart.Items, models.CartItem{
-			ProductID: item.ProductID,
-			Name:      product.Name,
-			Price:     product.Price,
-			Quantity:  item.Quantity,
-			Total:     lineTotal,
-		})
-		displayCart.TotalPrice += lineTotal
+		item.Total = item.Price * float64(item.Quantity)
+		grandTotal += item.Total
 	}
 
-	app.render(w, r, "cart.page.tmpl", &TemplateData{
-		Cart: displayCart,
-	})
-}
+	// 3. Используем ТВОЙ механизм данных (addDefaultData)
+	// Создаем пустую структуру и наполняем её стандартными данными (User, Year и т.д.)
+	data := app.addDefaultData(&TemplateData{}, r)
 
-func (app *application) addToCart(w http.ResponseWriter, r *http.Request) {
-	pid, _ := primitive.ObjectIDFromHex(r.FormValue("product_id"))
-	uid, _ := primitive.ObjectIDFromHex(app.session.GetString(r.Context(), "authenticatedUserID"))
-
-	qty, _ := strconv.Atoi(r.FormValue("quantity"))
-	if qty == 0 {
-		qty = 1
+	// 4. Передаем корзину в TemplateData
+	// Твой TemplateData уже имеет поле Cart *models.Cart
+	data.Cart = &models.Cart{
+		Items:      cartItems,
+		TotalPrice: grandTotal,
 	}
 
-	filter := bson.M{"user_id": uid, "product_id": pid}
-	update := bson.M{"$inc": bson.M{"quantity": qty}}
-	opts := options.Update().SetUpsert(true)
-
-	_, err := app.DB.Users.Database().Collection("cart").UpdateOne(r.Context(), filter, update, opts)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	http.Redirect(w, r, "/cart", http.StatusSeeOther)
-}
-
-func (app *application) createOrderFromCart(w http.ResponseWriter, r *http.Request) {
-	uidHex := app.session.GetString(r.Context(), "authenticatedUserID")
-	uid, _ := primitive.ObjectIDFromHex(uidHex)
-
-	cartItems, err := app.DB.GetUserCart(uid)
-	if err != nil || len(cartItems) == 0 {
-		http.Redirect(w, r, "/cart", http.StatusSeeOther)
-		return
-	}
-
-	var total float64
-	for _, item := range cartItems {
-		product, err := app.DB.GetProductByOID(item.ProductID)
-		if err == nil {
-			total += (product.Price * float64(item.Quantity))
-		}
-	}
-
-	order := models.Order{
-		ID:         primitive.NewObjectID(),
-		UserID:     uid,
-		TotalPrice: total,
-		Status:     "Paid",
-		CreatedAt:  time.Now(),
-	}
-
-	_, err = app.DB.Orders.InsertOne(r.Context(), order)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	_, err = app.DB.Users.Database().Collection("cart").DeleteMany(r.Context(), bson.M{"user_id": uid})
-	if err != nil {
-		app.errorLog.Printf("Could not clear cart for user %s: %v", uidHex, err)
-	}
-
-	app.session.Put(r.Context(), "flash", "Order placed successfully!")
-	http.Redirect(w, r, "/orders", http.StatusSeeOther)
+	// 5. Рендерим страницу
+	app.render(w, r, "cart.page.tmpl", data)
 }
 
 func (app *application) removeFromCart(w http.ResponseWriter, r *http.Request) {
@@ -395,4 +300,176 @@ func (app *application) removeFromCart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/cart", http.StatusSeeOther)
+}
+
+func (app *application) updateProductForm(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	product, err := app.DB.GetProduct(id)
+	if err != nil {
+		app.notFound(w)
+		return
+	}
+
+	categories, _ := app.DB.GetAllCategories()
+
+	app.render(w, r, "update_product.page.tmpl", &TemplateData{
+		Product:    product,
+		Categories: categories,
+	})
+}
+
+func (app *application) updateProduct(w http.ResponseWriter, r *http.Request) {
+	idHex := r.FormValue("id")
+	oid, _ := primitive.ObjectIDFromHex(idHex)
+	price, _ := strconv.ParseFloat(r.FormValue("price"), 64)
+	catID, _ := primitive.ObjectIDFromHex(r.FormValue("category_id"))
+
+	updatedP := models.Product{
+		ID:          oid,
+		Name:        r.FormValue("name"),
+		Price:       price,
+		City:        r.FormValue("city"),
+		CategoryID:  catID,
+		Description: r.FormValue("description"),
+	}
+
+	err := app.DB.UpdateProduct(updatedP)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	app.session.Put(r.Context(), "flash", "Product updated successfully!")
+	http.Redirect(w, r, "/seller/dashboard", http.StatusSeeOther)
+}
+
+func (app *application) addToCart(w http.ResponseWriter, r *http.Request) {
+	pidHex := r.FormValue("product_id")
+	pid, _ := primitive.ObjectIDFromHex(pidHex)
+	uid, _ := primitive.ObjectIDFromHex(app.session.GetString(r.Context(), "authenticatedUserID"))
+
+	// Сначала найдем продукт, чтобы взять его цену и имя
+	product, err := app.DB.GetProduct(pidHex)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	qty, _ := strconv.Atoi(r.FormValue("quantity"))
+	if qty <= 0 {
+		qty = 1
+	}
+
+	filter := bson.M{"user_id": uid, "product_id": pid}
+	// Сохраняем имя и цену ОБЯЗАТЕЛЬНО
+	update := bson.M{
+		"$set": bson.M{
+			"name":  product.Name,
+			"price": product.Price,
+		},
+		"$inc": bson.M{"quantity": qty},
+	}
+	opts := options.Update().SetUpsert(true)
+
+	_, err = app.DB.Users.Database().Collection("cart").UpdateOne(r.Context(), filter, update, opts)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/cart", http.StatusSeeOther)
+}
+
+func (app *application) createOrderFromCart(w http.ResponseWriter, r *http.Request) {
+	userIDStr := app.session.GetString(r.Context(), "authenticatedUserID")
+	userID, _ := primitive.ObjectIDFromHex(userIDStr)
+
+	paymentMethod := r.FormValue("payment_method")
+
+	cartItems, err := app.DB.GetUserCart(userID)
+	if err != nil || len(cartItems) == 0 {
+		app.session.Put(r.Context(), "error", "Корзина пуста")
+		http.Redirect(w, r, "/cart", http.StatusSeeOther)
+		return
+	}
+
+	var orderItems []models.OrderItem
+	var total float64
+
+	for _, item := range cartItems {
+		// Считаем актуальный Total для каждого товара
+		itemTotal := item.Price * float64(item.Quantity)
+
+		orderItems = append(orderItems, models.OrderItem{
+			ProductID: item.ProductID,
+			Quantity:  item.Quantity,
+			UnitPrice: item.Price, // Берем цену из корзины!
+		})
+		total += itemTotal
+	}
+
+	order := models.Order{
+		ID:            primitive.NewObjectID(),
+		UserID:        userID,
+		Status:        "Pending",
+		TotalPrice:    total,
+		PaymentMethod: paymentMethod, // СОХРАНЯЕМ МЕТОД ОПЛАТЫ
+		Items:         orderItems,
+		CreatedAt:     time.Now(),
+	}
+
+	err = app.DB.CreateOrder(order)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	_ = app.DB.ClearCart(userID)
+
+	app.session.Put(r.Context(), "flash", "Заказ успешно оформлен!")
+	http.Redirect(w, r, "/orders", http.StatusSeeOther)
+}
+
+func (app *application) catalogPage(w http.ResponseWriter, r *http.Request) {
+	// Получаем данные из поисковой строки браузера
+	search := r.URL.Query().Get("search")
+	category := r.URL.Query().Get("category")
+	city := r.URL.Query().Get("city")
+
+	// Вызываем фильтрацию (убедись, что метод GetFilteredProducts есть в mongodb.go)
+	products, err := app.DB.GetFilteredProducts(search, category, city)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	categories, _ := app.DB.GetAllCategories()
+	cities, _ := app.DB.GetUniqueCities()
+
+	app.render(w, r, "catalog.page.tmpl", &TemplateData{
+		Products:   products,
+		Categories: categories,
+		Cities:     cities,
+		SearchTerm: search,
+	})
+}
+
+func (app *application) showProduct(w http.ResponseWriter, r *http.Request) {
+	idHex := r.URL.Query().Get("id")
+
+	// Получаем продукт через твой DB метод
+	p, err := app.DB.GetProduct(idHex)
+	if err != nil {
+		app.notFound(w)
+		return
+	}
+
+	// Получаем отзывы (метод GetReviews у тебя должен быть в mongodb.go)
+	revs, _ := app.DB.GetReviews(p.ID)
+
+	data := app.addDefaultData(&TemplateData{}, r)
+	data.Product = p
+	data.Reviews = revs
+
+	app.render(w, r, "show.page.tmpl", data)
 }

@@ -8,13 +8,13 @@ import (
 )
 
 type CartItem struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty"`
-	UserID    primitive.ObjectID `bson:"user_id"`
-	ProductID primitive.ObjectID `bson:"product_id"`
-	Quantity  int                `bson:"quantity"`
-	Name      string
-	Price     float64
-	Total     float64
+	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	UserID    primitive.ObjectID `bson:"user_id" json:"user_id"`
+	ProductID primitive.ObjectID `bson:"product_id" json:"product_id"`
+	Quantity  int                `bson:"quantity" json:"quantity"`
+	Name      string             `bson:"name" json:"name"`
+	Price     float64            `bson:"price" json:"price"`
+	Total     float64            `bson:"total" json:"total"`
 }
 
 func (m *MongoDB) GetUserCart(userID primitive.ObjectID) ([]*CartItem, error) {

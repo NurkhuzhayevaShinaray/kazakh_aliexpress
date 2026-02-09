@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -17,6 +16,7 @@ type MongoDB struct {
 	Orders     *mongo.Collection
 	Categories *mongo.Collection
 	Payments   *mongo.Collection
+	Carts      *mongo.Collection
 }
 
 func (m *MongoDB) GetProductByOID(id primitive.ObjectID) (*Product, error) {
@@ -36,29 +36,6 @@ func (m *MongoDB) GetProduct(id string) (*Product, error) {
 func (m *MongoDB) GetAllProducts() ([]*Product, error) {
 	var products []*Product
 	cur, err := m.Products.Find(context.TODO(), bson.M{})
-	if err != nil {
-		return nil, err
-	}
-	defer cur.Close(context.TODO())
-	err = cur.All(context.TODO(), &products)
-	return products, err
-}
-
-func (m *MongoDB) GetFilteredProducts(search, category, city string) ([]*Product, error) {
-	filter := bson.M{}
-	if search != "" {
-		filter["name"] = bson.M{"$regex": search, "$options": "i"}
-	}
-	if category != "" {
-		if oid, err := primitive.ObjectIDFromHex(category); err == nil {
-			filter["category_id"] = oid
-		}
-	}
-	if city != "" {
-		filter["city"] = city
-	}
-	var products []*Product
-	cur, err := m.Products.Find(context.TODO(), filter)
 	if err != nil {
 		return nil, err
 	}
@@ -90,18 +67,22 @@ func (m *MongoDB) DeleteProduct(id string) error {
 func (m *MongoDB) CreateOrder(o Order) error {
 	o.CreatedAt = time.Now()
 	o.Status = "Pending"
-	var total float64
+
+	// Обновляем сток товаров
 	for _, item := range o.Items {
-		p, err := m.GetProductByOID(item.ProductID)
-		if err != nil || p.Stock < item.Quantity {
-			return fmt.Errorf("insufficient stock")
-		}
-		total += item.UnitPrice * float64(item.Quantity)
 		m.Products.UpdateOne(context.TODO(), bson.M{"_id": item.ProductID}, bson.M{"$inc": bson.M{"stock": -item.Quantity}})
 	}
-	o.TotalPrice = total
+
 	_, err := m.Orders.InsertOne(context.TODO(), o)
 	return err
+}
+
+func (m *MongoDB) GetCartByUserID(userID primitive.ObjectID) (*Cart, error) {
+	var c Cart
+	// ИСПРАВЛЕНО: коллекция "cart" (было "carts")
+	collection := m.Users.Database().Collection("cart")
+	err := collection.FindOne(context.TODO(), bson.M{"user_id": userID}).Decode(&c)
+	return &c, err
 }
 
 func (m *MongoDB) GetOrder(id primitive.ObjectID) (*Order, error) {
@@ -113,17 +94,6 @@ func (m *MongoDB) GetOrder(id primitive.ObjectID) (*Order, error) {
 func (m *MongoDB) GetAllOrders() ([]*Order, error) {
 	var orders []*Order
 	cur, err := m.Orders.Find(context.TODO(), bson.M{})
-	if err != nil {
-		return nil, err
-	}
-	defer cur.Close(context.TODO())
-	err = cur.All(context.TODO(), &orders)
-	return orders, err
-}
-
-func (m *MongoDB) GetOrdersByUser(userID primitive.ObjectID) ([]*Order, error) {
-	var orders []*Order
-	cur, err := m.Orders.Find(context.TODO(), bson.M{"userid": userID})
 	if err != nil {
 		return nil, err
 	}
@@ -229,4 +199,65 @@ func (m *MongoDB) GetUniqueCities() ([]string, error) {
 		}
 	}
 	return cities, nil
+}
+
+func (m *MongoDB) UpdateProduct(p Product) error {
+	filter := bson.M{"_id": p.ID}
+	update := bson.M{
+		"$set": bson.M{
+			"name":        p.Name,
+			"price":       p.Price,
+			"city":        p.City,
+			"description": p.Description,
+			"category_id": p.CategoryID,
+		},
+	}
+	_, err := m.Products.UpdateOne(context.TODO(), filter, update)
+	return err
+}
+
+func (m *MongoDB) ClearCart(userID primitive.ObjectID) error {
+	// ИСПРАВЛЕНО: Полная очистка корзины
+	collection := m.Users.Database().Collection("cart")
+	_, err := collection.DeleteOne(context.TODO(), bson.M{"user_id": userID})
+	return err
+}
+
+func (m *MongoDB) GetOrdersByUser(userID primitive.ObjectID) ([]*Order, error) {
+	var orders []*Order
+	// ИСПРАВЛЕНО: Ищем по "userid" (как в тегах bson)
+	cur, err := m.Orders.Find(context.TODO(), bson.M{"userid": userID})
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(context.TODO())
+	err = cur.All(context.TODO(), &orders)
+	return orders, err
+}
+
+func (m *MongoDB) GetFilteredProducts(search, category, city string) ([]*Product, error) {
+	filter := bson.M{}
+
+	if search != "" {
+		filter["name"] = bson.M{"$regex": search, "$options": "i"}
+	}
+
+	if category != "" {
+		if oid, err := primitive.ObjectIDFromHex(category); err == nil {
+			filter["category_id"] = oid
+		}
+	}
+
+	if city != "" {
+		filter["city"] = city
+	}
+
+	var products []*Product
+	cur, err := m.Products.Find(context.TODO(), filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(context.TODO())
+	err = cur.All(context.TODO(), &products)
+	return products, err
 }
