@@ -20,7 +20,7 @@
 
             {{if $.IsAuthenticated}}
                 {{if eq $.UserRole "customer"}}
-                    <form action="/order/create" method="POST" style="margin: 0;">
+                    <form action="/cart/add" method="POST" style="margin: 0;">
                         <input type="hidden" name="product_id" value="{{.ID.Hex}}">
                         <input type="hidden" name="qty" value="1">
                         <button type="submit" class="btn-secondary" style="width: 100%; background: #00afca; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer;">Quick Buy</button>

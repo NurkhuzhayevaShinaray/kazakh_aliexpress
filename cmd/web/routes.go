@@ -13,6 +13,10 @@ func (app *application) routes() http.Handler {
 	mux.Handle("/register", dynamic(http.HandlerFunc(app.register)))
 	mux.Handle("/logout", dynamic(http.HandlerFunc(app.logoutUser)))
 
+	mux.Handle("/cart", dynamic(app.requireAuthentication(http.HandlerFunc(app.showCart))))
+	mux.Handle("/cart/add", dynamic(app.requireAuthentication(http.HandlerFunc(app.addToCart))))
+	mux.Handle("/cart/remove", dynamic(app.requireAuthentication(http.HandlerFunc(app.removeFromCart))))
+	mux.Handle("/order/create-from-cart", dynamic(app.requireAuthentication(http.HandlerFunc(app.createOrderFromCart))))
 	mux.Handle("/orders", dynamic(app.requireAuthentication(app.requireRole("customer", http.HandlerFunc(app.listOrdersPage)))))
 	mux.Handle("/order", dynamic(app.requireAuthentication(app.requireRole("customer", http.HandlerFunc(app.showOrder)))))
 	mux.Handle("/order/create", dynamic(app.requireAuthentication(app.requireRole("customer", http.HandlerFunc(app.createOrder)))))
@@ -30,7 +34,6 @@ func (app *application) routes() http.Handler {
 	mux.Handle("/admin/users/delete", dynamic(app.requireAuthentication(app.requireRole("admin", http.HandlerFunc(app.deleteUser)))))
 	mux.Handle("/admin/orders", dynamic(app.requireAuthentication(app.requireRole("admin", http.HandlerFunc(app.adminOrders)))))
 	mux.Handle("/admin/orders/update", dynamic(app.requireAuthentication(app.requireRole("admin", http.HandlerFunc(app.updateOrderStatus)))))
-	mux.Handle("/admin/products", dynamic(app.requireAuthentication(app.requireRole("admin", http.HandlerFunc(app.adminProducts)))))
 
 	mux.HandleFunc("/api/products", app.apiProducts)
 	mux.HandleFunc("/api/orders", app.apiListOrders)

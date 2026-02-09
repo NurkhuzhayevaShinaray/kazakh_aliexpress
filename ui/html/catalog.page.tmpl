@@ -63,10 +63,11 @@
 
                         {{if $.IsAuthenticated}}
                             {{if eq $.UserRole "customer"}}
-                                <form action="/order/create" method="POST" style="margin: 0;">
+                                <form action="/cart/add" method="POST" style="margin: 0;">
                                     <input type="hidden" name="product_id" value="{{.ID.Hex}}">
+                                    <input type="number" name="quantity" value="1" min="1">
                                     <button type="submit" class="btn-secondary" style="width: 100%; border: 1px solid #00afca; background: white; color: #00afca; border-radius: 4px; padding: 8px; cursor: pointer;">
-                                        Сатып алу (Buy)
+                                        Сатып алу (Add to cart)
                                     </button>
                                 </form>
                             {{end}}

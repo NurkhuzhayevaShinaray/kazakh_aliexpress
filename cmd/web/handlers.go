@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,11 +10,9 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"golang.org/x/crypto/bcrypt"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"kazakh_aliexpress/internal/models"
 )
-
-// --- BASE HELPERS ---
 
 func (app *application) addDefaultData(td *TemplateData, r *http.Request) *TemplateData {
 	if td == nil {
@@ -49,8 +46,6 @@ func (app *application) render(w http.ResponseWriter, r *http.Request, page stri
 	buf.WriteTo(w)
 }
 
-// --- AUTH HANDLERS ---
-
 func (app *application) register(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		app.render(w, r, "register.page.tmpl", nil)
@@ -64,21 +59,7 @@ func (app *application) register(w http.ResponseWriter, r *http.Request) {
 		role = "customer"
 	}
 
-	hashed, err := bcrypt.GenerateFromPassword([]byte(password), 12)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	user := models.User{
-		ID:           primitive.NewObjectID(),
-		Email:        email,
-		PasswordHash: string(hashed),
-		Role:         role,
-		CreatedAt:    time.Now(),
-	}
-
-	_, err = app.DB.Users.InsertOne(context.TODO(), user)
+	err := app.UserRepository.Insert(email, password, role)
 	if err != nil {
 		app.serverError(w, err)
 		return
@@ -96,9 +77,8 @@ func (app *application) loginUser(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
-	var user models.User
-	err := app.DB.Users.FindOne(context.TODO(), bson.M{"email": email}).Decode(&user)
-	if err != nil || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
+	user, err := app.UserRepository.Authenticate(email, password)
+	if err != nil {
 		app.clientError(w, http.StatusUnauthorized)
 		return
 	}
@@ -115,8 +95,6 @@ func (app *application) logoutUser(w http.ResponseWriter, r *http.Request) {
 	app.session.Destroy(r.Context())
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
-
-// --- PRODUCT & CATALOG HANDLERS ---
 
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	products, err := app.DB.GetAllProducts()
@@ -149,15 +127,9 @@ func (app *application) showProduct(w http.ResponseWriter, r *http.Request) {
 	app.render(w, r, "show.page.tmpl", &TemplateData{Product: p, Reviews: revs})
 }
 
-// --- CUSTOMER HANDLERS ---
-
 func (app *application) listOrdersPage(w http.ResponseWriter, r *http.Request) {
 	userIDHex := app.session.GetString(r.Context(), "authenticatedUserID")
-	userID, err := primitive.ObjectIDFromHex(userIDHex)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
+	userID, _ := primitive.ObjectIDFromHex(userIDHex)
 
 	orders, err := app.DB.GetOrdersByUser(userID)
 	if err != nil {
@@ -211,7 +183,15 @@ func (app *application) completePayment(w http.ResponseWriter, r *http.Request) 
 func (app *application) addReview(w http.ResponseWriter, r *http.Request) {
 	pid, _ := primitive.ObjectIDFromHex(r.FormValue("product_id"))
 	uid, _ := primitive.ObjectIDFromHex(app.session.GetString(r.Context(), "authenticatedUserID"))
-	app.DB.AddReview(models.Review{ProductID: pid, UserID: uid, Rating: 5, Comment: r.FormValue("comment")})
+
+	rating, _ := strconv.Atoi(r.FormValue("rating"))
+
+	app.DB.AddReview(models.Review{
+		ProductID: pid,
+		UserID:    uid,
+		Rating:    rating,
+		Comment:   r.FormValue("comment")})
+
 	http.Redirect(w, r, "/product?id="+pid.Hex(), http.StatusSeeOther)
 }
 
@@ -232,14 +212,14 @@ func (app *application) createProduct(w http.ResponseWriter, r *http.Request) {
 		Stock: 10, City: r.FormValue("city"), CategoryID: catID,
 		SellerID: sellerID, Description: r.FormValue("description"),
 	}
-	app.DB.Products.InsertOne(context.TODO(), newP)
+	app.DB.Products.InsertOne(r.Context(), newP)
 	http.Redirect(w, r, "/seller/dashboard", http.StatusSeeOther)
 }
 
 func (app *application) updateProduct(w http.ResponseWriter, r *http.Request) {
 	id, _ := primitive.ObjectIDFromHex(r.FormValue("id"))
 	price, _ := strconv.ParseFloat(r.FormValue("price"), 64)
-	app.DB.Products.UpdateOne(context.TODO(), bson.M{"_id": id}, bson.M{"$set": bson.M{"price": price}})
+	app.DB.Products.UpdateOne(r.Context(), bson.M{"_id": id}, bson.M{"$set": bson.M{"price": price}})
 	http.Redirect(w, r, "/catalog", http.StatusSeeOther)
 }
 
@@ -266,11 +246,7 @@ func (app *application) adminDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) listUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := app.DB.GetAllUsers()
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
+	users, _ := app.DB.GetAllUsers()
 	app.render(w, r, "admin_users.page.tmpl", &TemplateData{Users: users})
 }
 
@@ -291,11 +267,6 @@ func (app *application) updateOrderStatus(w http.ResponseWriter, r *http.Request
 	http.Redirect(w, r, "/admin/orders", http.StatusSeeOther)
 }
 
-func (app *application) adminProducts(w http.ResponseWriter, r *http.Request) {
-	products, _ := app.DB.GetAllProducts()
-	app.render(w, r, "admin_dashboard.page.tmpl", &TemplateData{Products: products})
-}
-
 func (app *application) apiProducts(w http.ResponseWriter, r *http.Request) {
 	p, _ := app.DB.GetAllProducts()
 	json.NewEncoder(w).Encode(p)
@@ -304,4 +275,124 @@ func (app *application) apiProducts(w http.ResponseWriter, r *http.Request) {
 func (app *application) apiListOrders(w http.ResponseWriter, r *http.Request) {
 	o, _ := app.DB.GetAllOrders()
 	json.NewEncoder(w).Encode(o)
+}
+
+func (app *application) showCart(w http.ResponseWriter, r *http.Request) {
+	uidHex := app.session.GetString(r.Context(), "authenticatedUserID")
+	uid, _ := primitive.ObjectIDFromHex(uidHex)
+
+	cartItems, err := app.DB.GetUserCart(uid)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	displayCart := &models.Cart{
+		Items:      []models.CartItem{},
+		TotalPrice: 0,
+	}
+
+	for _, item := range cartItems {
+		product, err := app.DB.GetProductByOID(item.ProductID)
+		if err != nil {
+			continue
+		}
+
+		lineTotal := product.Price * float64(item.Quantity)
+
+		displayCart.Items = append(displayCart.Items, models.CartItem{
+			ProductID: item.ProductID,
+			Name:      product.Name,
+			Price:     product.Price,
+			Quantity:  item.Quantity,
+			Total:     lineTotal,
+		})
+		displayCart.TotalPrice += lineTotal
+	}
+
+	app.render(w, r, "cart.page.tmpl", &TemplateData{
+		Cart: displayCart,
+	})
+}
+
+func (app *application) addToCart(w http.ResponseWriter, r *http.Request) {
+	pid, _ := primitive.ObjectIDFromHex(r.FormValue("product_id"))
+	uid, _ := primitive.ObjectIDFromHex(app.session.GetString(r.Context(), "authenticatedUserID"))
+
+	qty, _ := strconv.Atoi(r.FormValue("quantity"))
+	if qty == 0 {
+		qty = 1
+	}
+
+	filter := bson.M{"user_id": uid, "product_id": pid}
+	update := bson.M{"$inc": bson.M{"quantity": qty}}
+	opts := options.Update().SetUpsert(true)
+
+	_, err := app.DB.Users.Database().Collection("cart").UpdateOne(r.Context(), filter, update, opts)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/cart", http.StatusSeeOther)
+}
+
+func (app *application) createOrderFromCart(w http.ResponseWriter, r *http.Request) {
+	uidHex := app.session.GetString(r.Context(), "authenticatedUserID")
+	uid, _ := primitive.ObjectIDFromHex(uidHex)
+
+	cartItems, err := app.DB.GetUserCart(uid)
+	if err != nil || len(cartItems) == 0 {
+		http.Redirect(w, r, "/cart", http.StatusSeeOther)
+		return
+	}
+
+	var total float64
+	for _, item := range cartItems {
+		product, err := app.DB.GetProductByOID(item.ProductID)
+		if err == nil {
+			total += (product.Price * float64(item.Quantity))
+		}
+	}
+
+	order := models.Order{
+		ID:         primitive.NewObjectID(),
+		UserID:     uid,
+		TotalPrice: total,
+		Status:     "Paid",
+		CreatedAt:  time.Now(),
+	}
+
+	_, err = app.DB.Orders.InsertOne(r.Context(), order)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	_, err = app.DB.Users.Database().Collection("cart").DeleteMany(r.Context(), bson.M{"user_id": uid})
+	if err != nil {
+		app.errorLog.Printf("Could not clear cart for user %s: %v", uidHex, err)
+	}
+
+	app.session.Put(r.Context(), "flash", "Order placed successfully!")
+	http.Redirect(w, r, "/orders", http.StatusSeeOther)
+}
+
+func (app *application) removeFromCart(w http.ResponseWriter, r *http.Request) {
+	pid, err := primitive.ObjectIDFromHex(r.FormValue("product_id"))
+	if err != nil {
+		app.clientError(w, http.StatusBadRequest)
+		return
+	}
+
+	uid, _ := primitive.ObjectIDFromHex(app.session.GetString(r.Context(), "authenticatedUserID"))
+
+	filter := bson.M{"user_id": uid, "product_id": pid}
+	_, err = app.DB.Users.Database().Collection("cart").DeleteOne(r.Context(), filter)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	http.Redirect(w, r, "/cart", http.StatusSeeOther)
 }

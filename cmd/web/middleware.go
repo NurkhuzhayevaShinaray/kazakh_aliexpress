@@ -17,7 +17,6 @@ func (app *application) requireAuthentication(next http.Handler) http.Handler {
 	})
 }
 
-// FIX: Change 'next http.HandlerFunc' to 'next http.Handler'
 func (app *application) requireRole(role string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userRole := app.session.GetString(r.Context(), "userRole")

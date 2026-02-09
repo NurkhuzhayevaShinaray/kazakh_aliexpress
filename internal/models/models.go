@@ -22,12 +22,6 @@ type Review struct {
 	Comment   string
 	CreatedAt time.Time
 }
-type CartItem struct {
-	ProductID primitive.ObjectID `bson:"product_id"`
-	Name      string             `bson:"name"`
-	Price     int                `bson:"price"`
-	Quantity  int                `bson:"quantity"`
-}
 type Order struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty"`
 	UserID     primitive.ObjectID
@@ -71,5 +65,5 @@ type Cart struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty"`
 	UserID     primitive.ObjectID `bson:"user_id"`
 	Items      []CartItem         `bson:"items"`
-	TotalPrice int                `bson:"total_price"`
+	TotalPrice float64            `bson:"total_price"`
 }

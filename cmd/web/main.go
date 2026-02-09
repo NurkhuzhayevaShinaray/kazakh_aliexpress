@@ -4,6 +4,7 @@ import (
 	"context"
 	"html/template"
 	"kazakh_aliexpress/internal/models"
+	"kazakh_aliexpress/internal/repository"
 	"log"
 	"net/http"
 	"os"
@@ -16,12 +17,13 @@ import (
 )
 
 type application struct {
-	DB            *models.MongoDB
-	session       *scs.SessionManager
-	orderQueue    chan models.Order
-	infoLog       *log.Logger
-	errorLog      *log.Logger
-	templateCache map[string]*template.Template
+	DB             *models.MongoDB
+	UserRepository *repository.UserRepository
+	session        *scs.SessionManager
+	orderQueue     chan models.Order
+	infoLog        *log.Logger
+	errorLog       *log.Logger
+	templateCache  map[string]*template.Template
 }
 
 func main() {
@@ -66,6 +68,9 @@ func main() {
 		infoLog:       infoLog,
 		errorLog:      errorLog,
 		templateCache: templateCache,
+		UserRepository: &repository.UserRepository{
+			Collection: db.Collection("users"),
+		},
 	}
 
 	go app.orderWorker()
