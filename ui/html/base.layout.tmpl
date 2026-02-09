@@ -11,27 +11,48 @@
         <header class="navbar">
             <div class="container nav-content">
                 <h1><a href='/'>Kazakh<span>@Express</span></a></h1>
-                <nav>
-                    <ul class="nav-links">
-                        <li><a href="/">Home</a></li>
-                        <li><a href="/catalog">Catalog</a></li>
+              <nav>
+                  <ul class="nav-links">
+                      <li><a href="/">Home</a></li>
+                      <li><a href="/catalog">Catalog</a></li>
 
-                        <li><a href="/orders">My Orders</a></li>
+                      {{if $.IsAuthenticated}}
+                          {{if eq $.UserRole "customer"}}
+                              <li><a href="/orders">My Orders</a></li>
+                              <li><a href="/cart">Cart</a></li>
+                          {{end}}
 
-                        <li><a href="/seller/dashboard" style="color: #00afca; font-weight: bold;">Seller Center</a></li>
+                          {{if eq $.UserRole "seller"}}
+                              <li><a href="/seller/dashboard" style="color: #00afca;">Seller Center</a></li>
+                          {{end}}
 
-                        <li class="admin-dropdown">
-                            <a href="/admin/dashboard" style="color: #fcd116;">Admin Panel</a>
-                            <ul class="dropdown-menu">
-                                <li><a href="/admin/users">Manage Users</a></li>                            </ul>
-                        </li>
-                    </ul>
-                </nav>
+                          {{if eq $.UserRole "admin"}}
+                              <li><a href="/admin/dashboard" style="color: #fcd116;">Admin Panel</a></li>
+                          {{end}}
+
+                          <li>
+                              <form action='/logout' method='POST' style='display:inline'>
+                                  <button class="logout-btn">Logout ({{.UserName}})</button>
+                              </form>
+                          </li>
+                      {{else}}
+                          <li><a href="/login">Login</a></li>
+                          <li><a href="/register" class="signup-btn">Sign Up</a></li>
+                      {{end}}
+                  </ul>
+              </nav>
             </div>
         </header>
+
+
+
         <main class="container">
-            {{template "main" .}} 
+            {{template "main" .}}
         </main>
+
+        <footer class="container">
+            <p>&copy; 2026 Kazakh Aliexpress - Local Sellers, Fast Delivery</p>
+        </footer>
     </body>
 </html>
 {{end}}

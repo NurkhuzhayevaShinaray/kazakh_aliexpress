@@ -22,7 +22,12 @@ type Review struct {
 	Comment   string
 	CreatedAt time.Time
 }
-
+type CartItem struct {
+	ProductID primitive.ObjectID `bson:"product_id"`
+	Name      string             `bson:"name"`
+	Price     int                `bson:"price"`
+	Quantity  int                `bson:"quantity"`
+}
 type Order struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty"`
 	UserID     primitive.ObjectID
@@ -53,7 +58,7 @@ type Payment struct {
 }
 
 type Product struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" json:id`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Name        string             `bson:"name" json:"name"`
 	Price       float64            `bson:"price" json:"price"`
 	Stock       int                `bson:"stock" json:"stock"`
@@ -61,4 +66,10 @@ type Product struct {
 	CategoryID  primitive.ObjectID `bson:"category_id" json:"category_id"`
 	SellerID    primitive.ObjectID `bson:"seller_id" json:"seller_id"` // NEW FIELD
 	Description string             `bson:"description" json:"description"`
+}
+type Cart struct {
+	ID         primitive.ObjectID `bson:"_id,omitempty"`
+	UserID     primitive.ObjectID `bson:"user_id"`
+	Items      []CartItem         `bson:"items"`
+	TotalPrice int                `bson:"total_price"`
 }

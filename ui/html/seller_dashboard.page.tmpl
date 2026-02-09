@@ -2,29 +2,71 @@
 
 {{define "main"}}
 <div class="container">
-    <h2>Seller Dashboard</h2>
-    <p>Welcome to your sales panel.</p>
+    <header style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Seller Dashboard</h2>
+        <span class="badge">Seller Mode</span>
+    </header>
 
     <article>
-        <h3>Your Inventory</h3>
+        <h3>Add New Product</h3>
+        <form action="/product/create" method="POST">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <label>Product Name</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div>
+                    <label>Price (₸)</label>
+                    <input type="number" name="price" required>
+                </div>
+                <div>
+                    <label>City</label>
+                    <input type="text" name="city" placeholder="e.g., Almaty" required>
+                </div>
+                <div>
+                    <label>Category</label>
+                    <select name="category_id">
+                        {{range .Categories}}
+                            <option value="{{.ID.Hex}}">{{.Name}}</option>
+                        {{end}}
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 15px;">
+                <label>Description</label>
+                <textarea name="description" rows="3"></textarea>
+            </div>
+            <button type="submit" style="margin-top: 10px; background-color: #00afca;">Add Product to Marketplace</button>
+        </form>
+    </article>
+
+    <article>
+        <h3>Your Current Inventory</h3>
         <table>
             <thead>
                 <tr>
                     <th>Product Name</th>
                     <th>Price</th>
-                    <th>Stock</th>
+                    <th>City</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
                 {{range .Products}}
                 <tr>
-                    <td>{{.Name}}</td>
+                    <td><strong>{{.Name}}</strong></td>
                     <td>{{.Price}} ₸</td>
-                    <td>{{.Stock}}</td>
+                    <td>{{.City}}</td>
+                    <td>
+                        <form action="/product/delete" method="POST" style="margin:0;">
+                            <input type="hidden" name="id" value="{{.ID.Hex}}">
+                            <button type="submit" style="background-color: #e74c3c; padding: 5px 10px; font-size: 0.8em;">Delete</button>
+                        </form>
+                    </td>
                 </tr>
                 {{else}}
                 <tr>
-                    <td colspan="3">No products found. Add some!</td>
+                    <td colspan="4">You haven't listed any products yet.</td>
                 </tr>
                 {{end}}
             </tbody>

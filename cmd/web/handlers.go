@@ -4,248 +4,77 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 	"time"
 
-	"kazakh_aliexpress/internal/models"
-
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
+	"kazakh_aliexpress/internal/models"
 )
 
-type templateData struct {
-	Products     []*models.Product
-	Product      *models.Product
-	Reviews      []*models.Review
-	Orders       []*models.Order
-	Order        *models.Order
-	Payment      *models.Payment
-	Users        []*models.User
-	Categories   []*models.Category
-	SearchTerm   string
-	CategoryName string
-	TotalRevenue float64
-	TotalOrders  int
-	Cities       []string
+// --- BASE HELPERS ---
+
+func (app *application) addDefaultData(td *TemplateData, r *http.Request) *TemplateData {
+	if td == nil {
+		td = &TemplateData{}
+	}
+	td.CurrentYear = time.Now().Year()
+	td.IsAuthenticated = app.isAuthenticated(r)
+
+	if td.IsAuthenticated {
+		td.UserRole = app.session.GetString(r.Context(), "userRole")
+		td.UserName = app.session.GetString(r.Context(), "userEmail")
+	}
+	return td
 }
 
-func (app *application) sellerDashboard(w http.ResponseWriter, r *http.Request) {
-	// 1. Get ID (Use the one from your MongoDB Compass)
-	sellerID, err := primitive.ObjectIDFromHex("698884b6ca52a7ff2376d549")
-	if err != nil {
-		app.serverError(w, err)
+func (app *application) render(w http.ResponseWriter, r *http.Request, page string, data *TemplateData) {
+	ts, ok := app.templateCache[page]
+	if !ok {
+		app.serverError(w, fmt.Errorf("the template %s does not exist", page))
 		return
 	}
 
-	// 2. ЗАМЕНИ ЭТУ СТРОКУ (используй sellerID здесь):
-	products, err := app.DB.GetProductsBySeller(sellerID) // Теперь переменная используется!
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	// 3. IMPORTANT: If products is nil, initialize it as an empty slice
-	// so the template {{range}} doesn't panic
-	if products == nil {
-		products = []*models.Product{}
-	}
-
-	app.render(w, "seller_dashboard.page.tmpl", &templateData{
-		Products: products,
-	})
-}
-
-func (app *application) adminDashboard(w http.ResponseWriter, r *http.Request) {
-	revenue, _ := app.DB.GetTotalRevenue()
-	products, _ := app.DB.GetAllProducts()
-	orders, _ := app.DB.GetAllOrders()
-
-	app.render(w, "admin_dashboard.page.tmpl", &templateData{
-		TotalRevenue: revenue,
-		Products:     products,
-		TotalOrders:  len(orders),
-	})
-}
-
-func (app *application) home(w http.ResponseWriter, r *http.Request) {
-	products, _ := app.DB.GetAllProducts()
-	app.render(w, "home.page.tmpl", &templateData{Products: products})
-}
-
-func (app *application) showProduct(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		app.notFound(w)
-		return
-	}
-
-	p, err := app.DB.GetProduct(id)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	revs, _ := app.DB.GetReviews(p.ID)
-
-	app.render(w, "show.page.tmpl", &templateData{
-		Product: p,
-		Reviews: revs,
-	})
-}
-
-func (app *application) showOrder(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		app.notFound(w)
-		return
-	}
-
-	oid, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	order, err := app.DB.GetOrder(oid)
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			app.notFound(w)
-		} else {
-			app.serverError(w, err)
-		}
-		return
-	}
-
-	payment, _ := app.DB.GetPaymentByOrderID(oid)
-
-	app.render(w, "order_details.page.tmpl", &templateData{
-		Order:   order,
-		Payment: payment,
-	})
-}
-
-func (app *application) addReview(w http.ResponseWriter, r *http.Request) {
-	pid, _ := primitive.ObjectIDFromHex(r.FormValue("product_id"))
-	user := app.DB.FindOrCreateUser(r.FormValue("email"))
-
-	app.DB.AddReview(models.Review{
-		ProductID: pid,
-		UserID:    user.ID,
-		Rating:    5,
-		Comment:   r.FormValue("comment"),
-	})
-
-	http.Redirect(w, r, "/product?id="+pid.Hex(), http.StatusSeeOther)
-}
-
-func (app *application) apiProducts(w http.ResponseWriter, r *http.Request) {
-	products, _ := app.DB.GetAllProducts()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(products)
-}
-
-func (app *application) apiCreateOrder(w http.ResponseWriter, r *http.Request) {
-
-	var o models.Order
-
-	if err := json.NewDecoder(r.Body).Decode(&o); err != nil {
-
-		app.clientError(w, http.StatusBadRequest)
-
-		return
-
-	}
-
-	if o.ID.IsZero() {
-
-		o.ID = primitive.NewObjectID()
-
-	}
-
-	payment := models.Payment{
-
-		OrderID: o.ID,
-
-		Amount: o.TotalPrice,
-
-		Status: "Pending",
-
-		Method: "API_EXTERNAL",
-	}
-
-	if err := app.DB.CreatePayment(payment); err != nil {
-
-		app.serverError(w, err)
-
-		return
-
-	}
-
-	app.orderQueue <- o
-
-	json.NewEncoder(w).Encode(map[string]string{
-
-		"status": "queued",
-
-		"order_id": o.ID.Hex(),
-	})
-
-}
-
-func (app *application) render(w http.ResponseWriter, page string, data *templateData) {
-	// Define files
-	files := []string{
-		"./ui/html/base.layout.tmpl",
-		"./ui/html/" + page,
-	}
-
-	// 1. Parse the files
-	ts, err := template.ParseFiles(files...)
-	if err != nil {
-		app.serverError(w, fmt.Errorf("TEMPLATE ERROR: %v", err))
-		return
-	}
-
-	// 2. USE A BUFFER - This is the secret to fixing the 'superfluous' error
 	buf := new(bytes.Buffer)
-
-	// 3. Execute to the BUFFER first
-	err = ts.ExecuteTemplate(buf, "base", data)
+	err := ts.ExecuteTemplate(buf, "base", app.addDefaultData(data, r))
 	if err != nil {
 		app.serverError(w, err)
-		return // Stop here if it fails!
+		return
 	}
 
-	// 4. If we reach here, it's safe to send to the browser
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	buf.WriteTo(w)
 }
 
+// --- AUTH HANDLERS ---
+
 func (app *application) register(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		app.render(w, "register.page.tmpl", nil)
+		app.render(w, r, "register.page.tmpl", nil)
 		return
 	}
 
 	email := r.FormValue("email")
 	password := r.FormValue("password")
+	role := r.FormValue("role")
+	if role == "" {
+		role = "customer"
+	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
 
 	user := models.User{
+		ID:           primitive.NewObjectID(),
 		Email:        email,
-		PasswordHash: string(hashedPassword),
-		Role:         "buyer",
+		PasswordHash: string(hashed),
+		Role:         role,
 		CreatedAt:    time.Now(),
 	}
 
@@ -260,7 +89,7 @@ func (app *application) register(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) loginUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		app.render(w, "login.page.tmpl", nil)
+		app.render(w, r, "login.page.tmpl", nil)
 		return
 	}
 
@@ -269,17 +98,171 @@ func (app *application) loginUser(w http.ResponseWriter, r *http.Request) {
 
 	var user models.User
 	err := app.DB.Users.FindOne(context.TODO(), bson.M{"email": email}).Decode(&user)
-	if err != nil {
+	if err != nil || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
 		app.clientError(w, http.StatusUnauthorized)
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	app.session.Put(r.Context(), "authenticatedUserID", user.ID.Hex())
+	app.session.Put(r.Context(), "userRole", user.Role)
+	app.session.Put(r.Context(), "userEmail", user.Email)
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (app *application) logoutUser(w http.ResponseWriter, r *http.Request) {
+	app.session.Remove(r.Context(), "authenticatedUserID")
+	app.session.Destroy(r.Context())
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// --- PRODUCT & CATALOG HANDLERS ---
+
+func (app *application) home(w http.ResponseWriter, r *http.Request) {
+	products, err := app.DB.GetAllProducts()
 	if err != nil {
-		app.clientError(w, http.StatusUnauthorized)
+		app.serverError(w, err)
 		return
 	}
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	app.render(w, r, "home.page.tmpl", &TemplateData{Products: products})
+}
+
+func (app *application) catalogPage(w http.ResponseWriter, r *http.Request) {
+	products, _ := app.DB.GetAllProducts()
+	categories, _ := app.DB.GetAllCategories()
+	cities, _ := app.DB.GetUniqueCities()
+	app.render(w, r, "catalog.page.tmpl", &TemplateData{
+		Products:   products,
+		Categories: categories,
+		Cities:     cities,
+	})
+}
+
+func (app *application) showProduct(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	p, err := app.DB.GetProduct(id)
+	if err != nil {
+		app.clientError(w, http.StatusNotFound)
+		return
+	}
+	revs, _ := app.DB.GetReviews(p.ID)
+	app.render(w, r, "show.page.tmpl", &TemplateData{Product: p, Reviews: revs})
+}
+
+// --- CUSTOMER HANDLERS ---
+
+func (app *application) listOrdersPage(w http.ResponseWriter, r *http.Request) {
+	userIDHex := app.session.GetString(r.Context(), "authenticatedUserID")
+	userID, err := primitive.ObjectIDFromHex(userIDHex)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	orders, err := app.DB.GetOrdersByUser(userID)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	app.render(w, r, "orders.page.tmpl", &TemplateData{Orders: orders})
+}
+
+func (app *application) createOrder(w http.ResponseWriter, r *http.Request) {
+	uidHex := app.session.GetString(r.Context(), "authenticatedUserID")
+	uid, _ := primitive.ObjectIDFromHex(uidHex)
+	pid, _ := primitive.ObjectIDFromHex(r.FormValue("product_id"))
+
+	p, err := app.DB.GetProductByOID(pid)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	order := models.Order{
+		ID:         primitive.NewObjectID(),
+		UserID:     uid,
+		Status:     "Pending",
+		TotalPrice: p.Price,
+		CreatedAt:  time.Now(),
+	}
+
+	_, err = app.DB.Orders.InsertOne(r.Context(), order)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	http.Redirect(w, r, "/orders", http.StatusSeeOther)
+}
+
+func (app *application) showOrder(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	oid, _ := primitive.ObjectIDFromHex(id)
+	order, _ := app.DB.GetOrder(oid)
+	app.render(w, r, "order_details.page.tmpl", &TemplateData{Order: order})
+}
+
+func (app *application) completePayment(w http.ResponseWriter, r *http.Request) {
+	oid, _ := primitive.ObjectIDFromHex(r.FormValue("order_id"))
+	app.DB.UpdateOrderStatus(oid, "Paid")
+	http.Redirect(w, r, "/orders", http.StatusSeeOther)
+}
+
+func (app *application) addReview(w http.ResponseWriter, r *http.Request) {
+	pid, _ := primitive.ObjectIDFromHex(r.FormValue("product_id"))
+	uid, _ := primitive.ObjectIDFromHex(app.session.GetString(r.Context(), "authenticatedUserID"))
+	app.DB.AddReview(models.Review{ProductID: pid, UserID: uid, Rating: 5, Comment: r.FormValue("comment")})
+	http.Redirect(w, r, "/product?id="+pid.Hex(), http.StatusSeeOther)
+}
+
+func (app *application) sellerDashboard(w http.ResponseWriter, r *http.Request) {
+	sid, _ := primitive.ObjectIDFromHex(app.session.GetString(r.Context(), "authenticatedUserID"))
+	products, _ := app.DB.GetProductsBySeller(sid)
+	app.render(w, r, "seller_dashboard.page.tmpl", &TemplateData{Products: products})
+}
+
+func (app *application) createProduct(w http.ResponseWriter, r *http.Request) {
+	sellerIDHex := app.session.GetString(r.Context(), "authenticatedUserID")
+	sellerID, _ := primitive.ObjectIDFromHex(sellerIDHex)
+	price, _ := strconv.ParseFloat(r.FormValue("price"), 64)
+	catID, _ := primitive.ObjectIDFromHex(r.FormValue("category_id"))
+
+	newP := models.Product{
+		ID: primitive.NewObjectID(), Name: r.FormValue("name"), Price: price,
+		Stock: 10, City: r.FormValue("city"), CategoryID: catID,
+		SellerID: sellerID, Description: r.FormValue("description"),
+	}
+	app.DB.Products.InsertOne(context.TODO(), newP)
+	http.Redirect(w, r, "/seller/dashboard", http.StatusSeeOther)
+}
+
+func (app *application) updateProduct(w http.ResponseWriter, r *http.Request) {
+	id, _ := primitive.ObjectIDFromHex(r.FormValue("id"))
+	price, _ := strconv.ParseFloat(r.FormValue("price"), 64)
+	app.DB.Products.UpdateOne(context.TODO(), bson.M{"_id": id}, bson.M{"$set": bson.M{"price": price}})
+	http.Redirect(w, r, "/catalog", http.StatusSeeOther)
+}
+
+func (app *application) deleteProduct(w http.ResponseWriter, r *http.Request) {
+	app.DB.DeleteProduct(r.FormValue("id"))
+	http.Redirect(w, r, "/catalog", http.StatusSeeOther)
+}
+
+func (app *application) addCategory(w http.ResponseWriter, r *http.Request) {
+	app.DB.AddCategory(r.FormValue("name"))
+	http.Redirect(w, r, "/catalog", http.StatusSeeOther)
+}
+
+func (app *application) adminDashboard(w http.ResponseWriter, r *http.Request) {
+	products, _ := app.DB.GetAllProducts()
+	revenue, _ := app.DB.GetTotalRevenue()
+	totalOrders, _ := app.DB.GetTotalOrderCount()
+
+	app.render(w, r, "admin_dashboard.page.tmpl", &TemplateData{
+		Products:     products,
+		TotalRevenue: revenue,
+		TotalOrders:  int(totalOrders),
+	})
 }
 
 func (app *application) listUsers(w http.ResponseWriter, r *http.Request) {
@@ -288,362 +271,37 @@ func (app *application) listUsers(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, err)
 		return
 	}
-	app.render(w, "admin_users.page.tmpl", &templateData{
-		Users: users,
-	})
-}
-
-func (app *application) updateProduct(w http.ResponseWriter, r *http.Request) {
-	id, _ := primitive.ObjectIDFromHex(r.FormValue("id"))
-	price, _ := strconv.ParseFloat(r.FormValue("price"), 64)
-
-	_, err := app.DB.Products.UpdateOne(context.TODO(),
-		bson.M{"_id": id},
-		bson.M{"$set": bson.M{"price": price}},
-	)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	http.Redirect(w, r, "/catalog", http.StatusSeeOther)
-}
-
-func (app *application) deleteProduct(w http.ResponseWriter, r *http.Request) {
-	id := r.FormValue("id")
-	if id == "" {
-		app.clientError(w, http.StatusBadRequest)
-		return
-	}
-
-	err := app.DB.DeleteProduct(id)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	http.Redirect(w, r, "/catalog", http.StatusSeeOther)
-}
-
-func (app *application) catalogPage(w http.ResponseWriter, r *http.Request) {
-	search := r.URL.Query().Get("search")
-	catID := r.URL.Query().Get("category")
-	city := r.URL.Query().Get("city")
-
-	products, err := app.DB.GetFilteredProducts(search, catID, city)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	if search != "" || catID != "" || city != "" {
-		products, err = app.DB.GetFilteredProducts(search, catID, city)
-	} else {
-		products, err = app.DB.GetAllProducts()
-	}
-
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	categories, _ := app.DB.GetAllCategories()
-	cities, _ := app.DB.GetUniqueCities()
-
-	var selectedCatName string
-	for _, c := range categories {
-		if c.ID.Hex() == catID {
-			selectedCatName = c.Name
-			break
-		}
-	}
-	app.render(w, "catalog.page.tmpl", &templateData{
-		Products:     products,
-		Categories:   categories,
-		SearchTerm:   search,
-		CategoryName: selectedCatName,
-		Cities:       cities,
-	})
-}
-
-func (app *application) listOrdersPage(w http.ResponseWriter, r *http.Request) {
-	orders, err := app.DB.GetAllOrders()
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-	app.render(w, "orders.page.tmpl", &templateData{Orders: orders})
-}
-
-func (app *application) createProduct(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		app.clientError(w, http.StatusMethodNotAllowed)
-		return
-	}
-
-	price, _ := strconv.ParseFloat(r.FormValue("price"), 64)
-	stock, _ := strconv.Atoi(r.FormValue("stock"))
-	categoryIDStr := r.FormValue("category_id")
-	city := r.FormValue("city")
-	description := r.PostForm.Get("description")
-	sellerID, _ := primitive.ObjectIDFromHex("698884b6ca52a7ff2376d549")
-
-	var catOID primitive.ObjectID
-
-	if categoryIDStr == "NEW" {
-		catOID = primitive.NewObjectID()
-		newName := r.FormValue("new_category_name")
-
-		newCat := models.Category{
-			ID:   catOID,
-			Name: newName,
-		}
-
-		_, err := app.DB.Categories.InsertOne(context.TODO(), newCat)
-		if err != nil {
-			app.serverError(w, err)
-			return
-		}
-	} else {
-		catOID, _ = primitive.ObjectIDFromHex(categoryIDStr)
-	}
-
-	newProduct := models.Product{
-		ID:          primitive.NewObjectID(),
-		Name:        r.FormValue("name"),
-		Price:       price,
-		Stock:       stock,
-		CategoryID:  catOID,
-		City:        city,
-		Description: description,
-		SellerID:    sellerID,
-	}
-
-	_, err := app.DB.Products.InsertOne(context.TODO(), newProduct)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	http.Redirect(w, r, "/catalog", http.StatusSeeOther)
-}
-
-func (app *application) apiListOrders(w http.ResponseWriter, r *http.Request) {
-	orders, err := app.DB.GetAllOrders()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(orders)
-}
-
-func (app *application) logRequest(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		app.infoLog.Printf("%s - %s %s %s", r.RemoteAddr, r.Proto, r.Method, r.URL.RequestURI())
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (app *application) recoverPanic(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				w.Header().Set("Connection", "close")
-				app.serverError(w, fmt.Errorf("%s", err))
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (app *application) requireRole(role string, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		userRole := r.URL.Query().Get("role")
-
-		if userRole != role {
-			http.Error(w, "Доступ тыйым салынған (Forbidden)", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	}
-}
-
-func (app *application) addCategory(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		name := r.FormValue("name")
-		if name == "" {
-			app.clientError(w, http.StatusBadRequest)
-			return
-		}
-
-		err := app.DB.AddCategory(name)
-		if err != nil {
-			app.serverError(w, err)
-			return
-		}
-		http.Redirect(w, r, "/catalog", http.StatusSeeOther)
-	}
-}
-
-func (app *application) createOrder(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		app.clientError(w, http.StatusMethodNotAllowed)
-		return
-	}
-
-	err := r.ParseForm()
-	if err != nil {
-		app.clientError(w, http.StatusBadRequest)
-		return
-	}
-
-	email := r.FormValue("email")
-	productIDHex := r.FormValue("product_id")
-	qty, _ := strconv.Atoi(r.FormValue("qty"))
-
-	productOID, _ := primitive.ObjectIDFromHex(productIDHex)
-	user := app.DB.FindOrCreateUser(email)
-
-	orderID := primitive.NewObjectID()
-
-	product, _ := app.DB.GetProductByOID(productOID)
-	totalPrice := product.Price * float64(qty)
-
-	newOrder := models.Order{
-		ID:         orderID,
-		UserID:     user.ID,
-		Status:     "Pending",
-		TotalPrice: totalPrice,
-		Items: []models.OrderItem{
-			{
-				ProductID: productOID,
-				Quantity:  qty,
-				UnitPrice: product.Price,
-			},
-		},
-		CreatedAt: time.Now(),
-	}
-
-	payment := models.Payment{
-		ID:        primitive.NewObjectID(),
-		OrderID:   orderID,
-		Amount:    totalPrice,
-		Status:    "Pending",
-		CreatedAt: time.Now(),
-	}
-
-	_, err = app.DB.Orders.InsertOne(r.Context(), newOrder)
-
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	err = app.DB.CreatePayment(payment)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	app.orderQueue <- newOrder
-
-	http.Redirect(w, r, "/order?id="+orderID.Hex(), http.StatusSeeOther)
-}
-
-func (app *application) completePayment(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		app.clientError(w, http.StatusMethodNotAllowed)
-		return
-	}
-
-	orderIDHex := r.FormValue("order_id")
-	method := r.FormValue("method")
-	oid, _ := primitive.ObjectIDFromHex(orderIDHex)
-
-	err := app.DB.UpdatePaymentStatus(oid, "Completed", method)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	err = app.DB.UpdateOrderStatus(oid, "Paid")
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	err = app.DB.UpdateOrderStatus(oid, "Processing")
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	http.Redirect(w, r, "/order?id="+orderIDHex, http.StatusSeeOther)
+	app.render(w, r, "admin_users.page.tmpl", &TemplateData{Users: users})
 }
 
 func (app *application) deleteUser(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		app.clientError(w, http.StatusMethodNotAllowed)
-		return
-	}
-
-	id := r.FormValue("id")
-	oid, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		app.clientError(w, http.StatusBadRequest)
-		return
-	}
-
-	err = app.DB.DeleteUser(oid)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
+	oid, _ := primitive.ObjectIDFromHex(r.FormValue("id"))
+	app.DB.DeleteUser(oid)
 	http.Redirect(w, r, "/admin/users", http.StatusSeeOther)
 }
 
-// adminProducts renders a page specifically for managing products
-func (app *application) adminProducts(w http.ResponseWriter, r *http.Request) {
-	products, err := app.DB.GetAllProducts()
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	app.render(w, "admin_dashboard.page.tmpl", &templateData{
-		Products: products,
-	})
-}
-
 func (app *application) adminOrders(w http.ResponseWriter, r *http.Request) {
-	orders, err := app.DB.GetAllOrders()
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
-	app.render(w, "admin_orders.page.tmpl", &templateData{
-		Orders: orders,
-	})
+	orders, _ := app.DB.GetAllOrders()
+	app.render(w, r, "admin_orders.page.tmpl", &TemplateData{Orders: orders})
 }
 
 func (app *application) updateOrderStatus(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		app.clientError(w, http.StatusMethodNotAllowed)
-		return
-	}
-
-	id := r.FormValue("id")
-	status := r.FormValue("status")
-	oid, _ := primitive.ObjectIDFromHex(id)
-
-	err := app.DB.UpdateOrderStatus(oid, status)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-
+	oid, _ := primitive.ObjectIDFromHex(r.FormValue("id"))
+	app.DB.UpdateOrderStatus(oid, r.FormValue("status"))
 	http.Redirect(w, r, "/admin/orders", http.StatusSeeOther)
+}
+
+func (app *application) adminProducts(w http.ResponseWriter, r *http.Request) {
+	products, _ := app.DB.GetAllProducts()
+	app.render(w, r, "admin_dashboard.page.tmpl", &TemplateData{Products: products})
+}
+
+func (app *application) apiProducts(w http.ResponseWriter, r *http.Request) {
+	p, _ := app.DB.GetAllProducts()
+	json.NewEncoder(w).Encode(p)
+}
+
+func (app *application) apiListOrders(w http.ResponseWriter, r *http.Request) {
+	o, _ := app.DB.GetAllOrders()
+	json.NewEncoder(w).Encode(o)
 }

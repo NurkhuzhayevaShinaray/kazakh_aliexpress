@@ -1,39 +1,79 @@
+{{template "base" .}}
+
 {{define "main"}}
 <div class="container">
     <article>
-        <header><h1 style="color: #00afca;">{{.Product.Name}}</h1></header>
+        <header>
+            <h1 style="color: #00afca;">{{.Product.Name}}</h1>
+            <p style="color: #666;">Location: {{.Product.City}}</p>
+        </header>
+
         <p style="font-size: 1.5rem;">Price: <strong>{{.Product.Price}} ₸</strong></p>
 
-        <form action="/order/create" method="POST">
-            <input type="hidden" name="product_id" value="{{.Product.ID.Hex}}">
-            <label for="qty">Quantity:</label>
-            <input type="number" name="qty" value="1" min="1" style="width: 100px;">
-            <label for="email">Your Email:</label>
-            <input type="email" name="email" placeholder="example@test.com" required>
-            <button type="submit">Place Order</button>
-        </form>
+        {{if .IsAuthenticated}}
+            {{if eq .UserRole "customer"}}
+                <form action="/order/create" method="POST" style="background: #f4f4f4; padding: 20px; border-radius: 8px;">
+                    <input type="hidden" name="product_id" value="{{.Product.ID.Hex}}">
 
-        <hr>
-        <h3>Reviews</h3>
-        {{range .Reviews}}
-            <blockquote>"{{.Comment}}"<footer>— Rated: {{.Rating}}/5</footer></blockquote>
+                    <div style="margin-bottom: 15px;">
+                        <label for="qty">Quantity:</label>
+                        <input type="number" name="qty" value="1" min="1" style="width: 60px; padding: 5px;">
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="width: 100%; font-size: 1.1rem;">Place Order Now</button>
+                    <p style="font-size: 0.8rem; color: #888; margin-top: 10px;">Ordering as: {{.UserName}}</p>
+                </form>
+            {{else if eq $.UserRole "seller"}}
+                <p style="padding: 15px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px;">
+                    Sellers can only view products. To buy, please use a Customer account.
+                </p>
+            {{end}}
         {{else}}
-            <p>No reviews yet.</p>
+            <div style="padding: 20px; border: 2px dashed #ccc; text-align: center; border-radius: 8px;">
+                <p>Want to buy this? <a href="/login" style="color: #00afca; font-weight: bold;">Log in</a> or <a href="/register" style="color: #00afca; font-weight: bold;">Sign up</a> to start shopping!</p>
+            </div>
         {{end}}
 
         <hr>
-        <h3>Leave a Review</h3>
-        <form action="/review/add" method="POST">
-            <input type="hidden" name="product_id" value="{{.Product.ID.Hex}}">
 
-            <label for="email">Your Email (to identify you):</label>
-            <input type="email" id="email" name="email" required placeholder="user@example.com">
+        <h3>Reviews</h3>
+        {{range .Reviews}}
+            <blockquote style="border-left: 5px solid #00afca; padding-left: 15px; margin: 20px 0;">
+                <p>"{{.Comment}}"</p>
+                <footer style="color: #888;">— Rated: {{.Rating}}/5</footer>
+            </blockquote>
+        {{else}}
+            <p>No reviews yet. Be the first to review this product!</p>
+        {{end}}
 
-            <label for="comment">Comment:</label>
-            <textarea id="comment" name="comment" required placeholder="What do you think about this product?"></textarea>
+        <hr>
 
-            <button type="submit">Submit Review</button>
-        </form>
+        {{if $.IsAuthenticated}}
+            {{if eq $.UserRole "customer"}}
+                <h3>Leave a Review</h3>
+                <form action="/review/add" method="POST">
+                    <input type="hidden" name="product_id" value="{{.Product.ID.Hex}}">
+
+                    <div style="margin-bottom: 10px;">
+                        <label for="rating">Rating:</label>
+                        <select name="rating" id="rating">
+                            <option value="5">5 - Excellent</option>
+                            <option value="4">4 - Good</option>
+                            <option value="3">3 - Average</option>
+                            <option value="2">2 - Poor</option>
+                            <option value="1">1 - Terrible</option>
+                        </select>
+                    </div>
+
+                    <label for="comment">Comment:</label>
+                    <textarea id="comment" name="comment" required placeholder="What do you think about this product?" style="width: 100%; min-height: 100px;"></textarea>
+
+                    <button type="submit" class="btn-secondary" style="margin-top: 10px;">Submit Review</button>
+                </form>
+            {{end}}
+        {{else}}
+            <p style="font-size: 0.9rem; color: #666;"><a href="/login">Login</a> to leave a review.</p>
+        {{end}}
     </article>
 </div>
 {{end}}

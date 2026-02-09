@@ -1,16 +1,55 @@
+{{template "base" .}}
+
+{{define "title"}}My Orders{{end}}
+
 {{define "main"}}
-    <h2>Recent Orders</h2>
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+<div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>My Purchase History</h2>
+        <span class="badge" style="background: #00afca; color: white; padding: 5px 12px; border-radius: 4px;">
+            {{len .Orders}} Orders Total
+        </span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
         {{range .Orders}}
-            <article class="card">
-                <header>Order #{{.ID.Hex}}</header>
-                <p>Status: <mark>{{.Status}}</mark></p>
-                <p>Total: <strong>{{.TotalPrice}} ₸</strong></p>
-                <td><a href="/order?id={{.ID.Hex}}">View Payment Details</a></td>
-                <footer>Ordered on: {{.CreatedAt.Format "Jan 02, 2006"}}</footer>
+            <article class="card" style="border: 1px solid #eee; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;">
+                <header style="background: #f8f9fa; padding: 15px; border-bottom: 1px solid #eee;">
+                    <strong style="font-size: 0.8rem; color: #666;">ORDER ID:</strong>
+                    <code style="display: block; font-size: 0.9rem; color: #333;">{{.ID.Hex}}</code>
+                </header>
+
+                <div style="padding: 15px; flex-grow: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span>Status:</span>
+                        <span style="padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem;
+                            {{if eq .Status "Pending"}} background: #fff3cd; color: #856404;
+                            {{else if eq .Status "Paid"}} background: #d4edda; color: #155724;
+                            {{else if eq .Status "Cancelled"}} background: #f8d7da; color: #721c24;
+                            {{else}} background: #e2e3e5; {{end}}">
+                            {{.Status}}
+                        </span>
+                    </div>
+
+                    <p style="font-size: 1.2rem; margin: 15px 0;">Total: <strong>{{.TotalPrice}} ₸</strong></p>
+
+                    <a href="/order?id={{.ID.Hex}}" class="btn-primary" style="display: block; text-align: center; text-decoration: none; padding: 10px; border-radius: 4px; background: #333; color: white;">
+                        View Order & Payment Details
+                    </a>
+                </div>
+
+                <footer style="padding: 12px 15px; background: #fafafa; border-top: 1px solid #eee; font-size: 0.8rem; color: #888;">
+                    Placed on: {{.CreatedAt.Format "Jan 02, 2006 at 15:04"}}
+                </footer>
             </article>
         {{else}}
-            <p>No orders yet.</p>
+            <div style="grid-column: 1 / -1; text-align: center; padding: 60px; border: 2px dashed #ccc; border-radius: 12px;">
+                <div style="font-size: 3rem; margin-bottom: 20px;"></div>
+                <h3>You haven't ordered anything yet</h3>
+                <p style="color: #666; margin-bottom: 20px;">Ready to find something special from local Kazakh sellers?</p>
+                <a href="/catalog" class="btn-primary" style="padding: 10px 25px;">Start Shopping</a>
+            </div>
         {{end}}
     </div>
+</div>
 {{end}}

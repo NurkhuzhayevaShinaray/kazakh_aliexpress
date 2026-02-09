@@ -1,41 +1,52 @@
+{{template "base" .}}
+
 {{define "main"}}
-    <h2>Marketplace Management</h2>
+    <h2 class="section-title">Explore Kazakhstan's Marketplace</h2>
 
-    <article>
-        <header><strong>Add New Category</strong></header>
-        <form action="/category/add" method="POST" style="display: flex; gap: 10px;">
-            <input type="text" name="name" placeholder="Category Name (e.g., Souvenirs)" required>
-            <button type="submit">Create Category</button>
-        </form>
-    </article>
-
-    <section style="margin: 20px 0; display: flex; gap: 15px;">
-        <form action="/catalog" method="GET" style="display: flex; gap: 10px;">
-            <input type="text" name="search" placeholder="Search products..." value="{{.SearchTerm}}">
-
-            <select name="category">
-                <option value="">All Categories</option>
-                {{range .Categories}}
-                    <option value="{{.ID.Hex}}">{{.Name}}</option>
-                {{end}}
-            </select>
+    <section style="margin: 20px 0; background: #f9f9f9; padding: 20px; border-radius: 8px;">
+        <form action="/catalog" method="GET" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
             <div>
-                <label for="city">Аймақ (Region):</label>
+                <label style="display: block; margin-bottom: 5px;">Search</label>
+                <input type="text" name="search" placeholder="Search products..." value="{{.SearchTerm}}">
+            </div>
+
+            <div>
+                <label style="display: block; margin-bottom: 5px;">Category</label>
+                <select name="category">
+                    <option value="">All Categories</option>
+                    {{range .Categories}}
+                        <option value="{{.ID.Hex}}">{{.Name}}</option>
+                    {{end}}
+                </select>
+            </div>
+
+            <div>
+                <label style="display: block; margin-bottom: 5px;">Аймақ (Region):</label>
                 <select name="city" id="city">
                     <option value="">Барлық аймақтар (All Regions)</option>
                     {{range .Cities}}
                         <option value="{{.}}">{{.}}</option>
                     {{end}}
                 </select>
-                <div>
+            </div>
 
-
-            <button type="submit">Apply Filters</button>
+            <button type="submit" class="btn-primary" style="height: 40px;">Apply Filters</button>
         </form>
     </section>
 
+    {{if or .SearchTerm .CategoryName}}
+       <div style="margin: 20px 0; padding: 15px; background-color: #e0f7fa; border-left: 5px solid #00afca; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+           <p style="margin: 0;">
+               Showing results for:
+               {{if .SearchTerm}}<strong>"{{.SearchTerm}}"</strong>{{end}}
+               {{if and .SearchTerm .CategoryName}} in {{end}}
+               {{if .CategoryName}}<strong>{{.CategoryName}}</strong>{{end}}
+           </p>
+           <a href="/catalog" style="font-size: 0.85rem; text-decoration: underline; color: #007082;">Clear all filters</a>
+       </div>
+    {{end}}
+
     <section>
-        <h3>Search Results</h3>
         <div class="product-grid">
             {{range .Products}}
                 <div class="card">
@@ -45,69 +56,31 @@
                             {{.City}}
                         </span>
                     </div>
-                    <p>{{.Price}} ₸</p>
-                    <div class="card-footer">
-                        <a href="/product?id={{.ID.Hex}}" class="btn-primary">Көру</a>
+                    <p class="price-tag">{{.Price}} ₸</p>
+
+                    <div class="card-footer" style="display: flex; flex-direction: column; gap: 8px;">
+                        <a href="/product?id={{.ID.Hex}}" class="btn-primary" style="text-align: center;">Көру (View)</a>
+
+                        {{if $.IsAuthenticated}}
+                            {{if eq $.UserRole "customer"}}
+                                <form action="/order/create" method="POST" style="margin: 0;">
+                                    <input type="hidden" name="product_id" value="{{.ID.Hex}}">
+                                    <button type="submit" class="btn-secondary" style="width: 100%; border: 1px solid #00afca; background: white; color: #00afca; border-radius: 4px; padding: 8px; cursor: pointer;">
+                                        Сатып алу (Buy)
+                                    </button>
+                                </form>
+                            {{end}}
+                        {{else}}
+                            <p style="font-size: 0.75rem; color: #888; text-align: center; margin: 0;">Login to buy</p>
+                        {{end}}
                     </div>
                 </div>
             {{else}}
-                <div style="text-align: center; padding: 20px; border: 2px dashed #ccc;">
-                    <p>No products found matching your search or category/city filter.</p>
-                    <a href="/catalog">View All Products</a>
+                <div style="grid-column: 1 / -1; text-align: center; padding: 40px; border: 2px dashed #ccc; border-radius: 8px;">
+                    <p>No products found matching your criteria.</p>
+                    <a href="/catalog" class="btn-primary" style="display: inline-block; margin-top: 10px;">View All Products</a>
                 </div>
             {{end}}
         </div>
     </section>
-
-   {{if or .SearchTerm .CategoryName}}
-       <div style="margin: 20px 0; padding: 15px; background-color: #e0f7fa; border-left: 5px solid #00afca; border-radius: 4px;">
-           <p style="margin: 0;">
-               Showing results for:
-               {{if .SearchTerm}}<strong>"{{.SearchTerm}}"</strong>{{end}}
-               {{if and .SearchTerm .CategoryName}} in {{end}}
-               {{if .CategoryName}}<strong>{{.CategoryName}}</strong>{{end}}
-           </p>
-           <a href="/catalog" style="font-size: 0.85rem; text-decoration: underline;">Clear all filters</a>
-       </div>
-   {{end}}
-
-    <article>
-        <header><strong>Add New Product</strong></header>
-        <form action="/product/create" method="POST">
-            <input type="text" name="name" placeholder="Product Name" required>
-            <input type="number" name="price" placeholder="Price (₸)" required>
-
-            <div>
-                <label for="city">Аймақ:</label>
-                <select name="city" id="city">
-                    <option value="">Барлық аймақтар (All Regions)</option>
-                    {{range .Cities}}
-                        <option value="{{.}}">{{.}}</option>
-                    {{end}}
-                </select>
-            </div>
-
-            <label>Category:</label>
-            <select name="category_id" id="category-select" onchange="toggleNewCategory()">
-                <option value="">-- Select Existing --</option>
-                {{range .Categories}}
-                    <option value="{{.ID.Hex}}">{{.Name}}</option>
-                {{end}}
-                <option value="NEW">Add New Category...</option>
-            </select>
-
-            <div id="new-category-div" style="display:none; margin-top: 10px;">
-                <input type="text" name="new_category_name" placeholder="Enter New Category Name">
-            </div>
-
-            <button type="submit" style="margin-top: 15px;">Create Product</button>
-        </form>
-    </article>
-    <script>
-    function toggleNewCategory() {
-        var select = document.getElementById("category-select");
-        var div = document.getElementById("new-category-div");
-        div.style.display = (select.value === "NEW") ? "block" : "none";
-    }
-    </script>
 {{end}}

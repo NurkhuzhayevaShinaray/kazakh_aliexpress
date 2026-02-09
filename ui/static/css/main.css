@@ -133,7 +133,6 @@ input, select, textarea {
     background-color: #f9f9f9;
 }
 
-/* Dropdown logic */
 .admin-dropdown {
     position: relative;
     display: inline-block;
@@ -166,4 +165,16 @@ input, select, textarea {
 .dropdown-menu li a:hover {
     background-color: #f8f9fa;
     color: var(--kz-blue) !important;
+}
+.logout-btn {
+    background: none;
+    border: 1px solid #fcd116;
+    color: #fcd116;
+    cursor: pointer;
+    padding: 5px 10px;
+    font-family: 'Inter', sans-serif;
+}
+.logout-btn:hover {
+    background: #fcd116;
+    color: #333;
 }

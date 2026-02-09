@@ -2,9 +2,11 @@ module kazakh_aliexpress
 
 go 1.25
 
-require go.mongodb.org/mongo-driver v1.17.8
+require go.mongodb.org/mongo-driver v1.17.9
 
 require (
+	github.com/alexedwards/scs/v2 v2.9.0 // indirect
+	github.com/bmizerany/pat v0.0.0-20210406213842-e4b6760bdd6f // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect

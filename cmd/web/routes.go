@@ -4,40 +4,39 @@ import "net/http"
 
 func (app *application) routes() http.Handler {
 	mux := http.NewServeMux()
+	dynamic := app.session.LoadAndSave
 
-	mux.HandleFunc("/", app.home)
-	mux.HandleFunc("/product", app.showProduct)
-	mux.HandleFunc("/catalog", app.catalogPage)
-	mux.HandleFunc("/orders", app.listOrdersPage)
+	mux.Handle("/", dynamic(http.HandlerFunc(app.home)))
+	mux.Handle("/catalog", dynamic(http.HandlerFunc(app.catalogPage)))
+	mux.Handle("/product", dynamic(http.HandlerFunc(app.showProduct)))
+	mux.Handle("/login", dynamic(http.HandlerFunc(app.loginUser)))
+	mux.Handle("/register", dynamic(http.HandlerFunc(app.register)))
+	mux.Handle("/logout", dynamic(http.HandlerFunc(app.logoutUser)))
 
-	mux.HandleFunc("/product/create", app.createProduct)
-	mux.HandleFunc("/product/delete", app.deleteProduct)
-	mux.HandleFunc("/product/update", app.updateProduct)
-	mux.HandleFunc("/order/create", app.createOrder)
-	mux.HandleFunc("/review/add", app.addReview)
+	mux.Handle("/orders", dynamic(app.requireAuthentication(app.requireRole("customer", http.HandlerFunc(app.listOrdersPage)))))
+	mux.Handle("/order", dynamic(app.requireAuthentication(app.requireRole("customer", http.HandlerFunc(app.showOrder)))))
+	mux.Handle("/order/create", dynamic(app.requireAuthentication(app.requireRole("customer", http.HandlerFunc(app.createOrder)))))
+	mux.Handle("/payment/complete", dynamic(app.requireAuthentication(app.requireRole("customer", http.HandlerFunc(app.completePayment)))))
+	mux.Handle("/review/add", dynamic(app.requireAuthentication(app.requireRole("customer", http.HandlerFunc(app.addReview)))))
 
-	mux.HandleFunc("/category/add", app.addCategory)
+	mux.Handle("/seller/dashboard", dynamic(app.requireAuthentication(app.requireRole("seller", http.HandlerFunc(app.sellerDashboard)))))
+	mux.Handle("/product/create", dynamic(app.requireAuthentication(app.requireRole("seller", http.HandlerFunc(app.createProduct)))))
+	mux.Handle("/product/delete", dynamic(app.requireAuthentication(app.requireRole("seller", http.HandlerFunc(app.deleteProduct)))))
+	mux.Handle("/product/update", dynamic(app.requireAuthentication(app.requireRole("seller", http.HandlerFunc(app.updateProduct)))))
+	mux.Handle("/category/add", dynamic(app.requireAuthentication(app.requireRole("seller", http.HandlerFunc(app.addCategory)))))
+
+	mux.Handle("/admin", dynamic(app.requireAuthentication(app.requireRole("admin", http.HandlerFunc(app.adminDashboard)))))
+	mux.Handle("/admin/users", dynamic(app.requireAuthentication(app.requireRole("admin", http.HandlerFunc(app.listUsers)))))
+	mux.Handle("/admin/users/delete", dynamic(app.requireAuthentication(app.requireRole("admin", http.HandlerFunc(app.deleteUser)))))
+	mux.Handle("/admin/orders", dynamic(app.requireAuthentication(app.requireRole("admin", http.HandlerFunc(app.adminOrders)))))
+	mux.Handle("/admin/orders/update", dynamic(app.requireAuthentication(app.requireRole("admin", http.HandlerFunc(app.updateOrderStatus)))))
+	mux.Handle("/admin/products", dynamic(app.requireAuthentication(app.requireRole("admin", http.HandlerFunc(app.adminProducts)))))
 
 	mux.HandleFunc("/api/products", app.apiProducts)
-	mux.HandleFunc("/order", app.showOrder)
-	mux.HandleFunc("/payment/complete", app.completePayment)
 	mux.HandleFunc("/api/orders", app.apiListOrders)
 
-	// mux.HandleFunc("/admin", app.requireRole("admin", app.adminDashboard))
-	// mux.HandleFunc("/admin/dashboard", app.requireRole("admin", app.adminDashboard))
-	// mux.HandleFunc("/admin/users", app.requireRole("admin", app.listUsers))
+	fileServer := http.FileServer(http.Dir("./ui/static/"))
+	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
 
-	mux.HandleFunc("/admin", app.adminDashboard)
-	mux.HandleFunc("/admin/users", app.listUsers)
-
-	mux.HandleFunc("/admin/orders", app.adminOrders)
-	mux.HandleFunc("/admin/orders/update", app.updateOrderStatus)
-	mux.HandleFunc("/admin/dashboard", app.adminDashboard)
-	mux.HandleFunc("/admin/users/delete", app.deleteUser) // Matches the new handler
-	mux.HandleFunc("/admin/products", app.adminProducts)
-
-	mux.HandleFunc("/seller/dashboard", app.sellerDashboard)
-	mux.HandleFunc("/order/show", app.showOrder)
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./ui/static/"))))
-	return app.logRequest(app.recoverPanic(mux))
+	return app.recoverPanic(app.logRequest(mux))
 }

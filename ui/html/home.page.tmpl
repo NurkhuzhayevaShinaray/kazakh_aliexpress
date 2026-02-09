@@ -1,14 +1,40 @@
+{{template "base" .}}
+
 {{define "main"}}
+<section class="hero-banner" style="background: #fcd116; padding: 20px; border-radius: 8px; margin-bottom: 30px; text-align: center;">
+    <h2 style="color: #333; margin: 0;">Welcome to Kazakh@Express</h2>
+    <p style="color: #333;">Support local sellers and production</p>
+</section>
+
 <h2 class="section-title">Local Kazakh Products</h2>
-<div class="product-grid"> {{range .Products}}
-    <div class="card"> <div class="card-header"><strong>{{.Name}}</strong></div>
+
+<div class="product-grid">
+    {{range .Products}}
+    <div class="card">
+        <div class="card-header"><strong>{{.Name}}</strong></div>
         <p class="price-tag">{{.Price}} ₸</p>
-        <div class="card-footer">
-            <a href="/product?id={{.ID.Hex}}" class="btn-primary">View Details</a>
+        <p style="font-size: 0.8em; color: #666; margin-bottom: 10px;">Location: {{.City}}</p>
+
+        <div class="card-footer" style="display: flex; gap: 10px; flex-direction: column;">
+            <a href="/product?id={{.ID.Hex}}" class="btn-primary" style="text-align: center;">View Details</a>
+
+            {{if $.IsAuthenticated}}
+                {{if eq $.UserRole "customer"}}
+                    <form action="/order/create" method="POST" style="margin: 0;">
+                        <input type="hidden" name="product_id" value="{{.ID.Hex}}">
+                        <input type="hidden" name="qty" value="1">
+                        <button type="submit" class="btn-secondary" style="width: 100%; background: #00afca; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer;">Quick Buy</button>
+                    </form>
+                {{end}}
+            {{else}}
+                <span style="font-size: 0.75em; color: #888; text-align: center;">Log in to purchase</span>
+            {{end}}
         </div>
     </div>
     {{else}}
-    <p>The marketplace is empty.</p>
+    <div class="empty-state" style="text-align: center; padding: 50px;">
+        <p>The marketplace is currently empty. Check back later!</p>
+    </div>
     {{end}}
 </div>
 {{end}}
