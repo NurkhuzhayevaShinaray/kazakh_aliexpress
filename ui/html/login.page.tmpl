@@ -1,28 +1,28 @@
 {{template "base" .}}
 
-{{define "title"}}Login{{end}}
+{{define "title"}}Жүйеге кіру{{end}}
 
 {{define "main"}}
 <article style="max-width: 600px; margin: auto;">
     <header>
-        <h2>Welcome Back</h2>
-        <p>Log in to your Kazakh@Express account</p>
+        <h2>Қайта қош келдіңіз!</h2>
+        <p>Kazakh@Express аккаунтыңызға кіріңіз</p>
     </header>
     <form action='/login' method='POST'>
         <div>
-            <label>Email</label>
+            <label>Электрондық пошта</label>
             <input type='email' name='email' placeholder="example@mail.kz" required>
         </div>
 
         <div>
-            <label>Password</label>
+            <label>Құпия сөз</label>
             <input type='password' name='password' required>
         </div>
 
-        <button type='submit' class="signup-btn" style="width: 100%; margin-top: 20px;">Login</button>
+        <button type='submit' class="signup-btn" style="width: 100%; margin-top: 20px;">Кіру</button>
     </form>
     <footer style="margin-top: 20px; text-align: center;">
-        <p>Don't have an account? <a href="/register">Register here</a></p>
+        <p>Аккаунтыңыз жоқ па? <a href="/register">Осында тіркеліңіз</a></p>
     </footer>
 </article>
 {{end}}

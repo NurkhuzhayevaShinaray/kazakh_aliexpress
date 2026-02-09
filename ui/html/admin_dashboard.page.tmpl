@@ -1,54 +1,52 @@
 {{template "base" .}}
 
-{{define "title"}}Admin Dashboard{{end}}
+{{define "title"}}Админ панелі{{end}}
 
 {{define "main"}}
 <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2>Admin Analytics & Control</h2>
-        <a href="/admin/users" class="btn-primary" style="background: #333;">Manage Registered Users &rarr;</a>
+        <h2>Админ-талдау және басқару</h2>
+        <a href="/admin/users" class="btn-primary" style="background: #333;">Тіркелген пайдаланушылар &rarr;</a>
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
         <article style="text-align: center; border-top: 4px solid #28a745;">
-            <h5 style="color: #666; text-transform: uppercase; font-size: 0.8rem;">Total Marketplace Revenue</h5>
+            <h5 style="color: #666; text-transform: uppercase; font-size: 0.8rem;">Маркетплейстің жалпы табысы</h5>
             <p style="font-size: 2.5rem; color: #28a745; margin: 10px 0; font-weight: bold;">{{.TotalRevenue}} ₸</p>
         </article>
 
         <article style="text-align: center; border-top: 4px solid #00afca;">
-            <h5 style="color: #666; text-transform: uppercase; font-size: 0.8rem;">Total Orders Processed</h5>
+            <h5 style="color: #666; text-transform: uppercase; font-size: 0.8rem;">Өңделген тапсырыстар саны</h5>
             <p style="font-size: 2.5rem; color: #00afca; margin: 10px 0; font-weight: bold;">{{.TotalOrders}}</p>
         </article>
     </div>
 
     <article style="background: #f8f9fa; border: 1px solid #dee2e6; margin-bottom: 30px;">
-        <header><strong style="color: #333;">Marketplace Inventory Management</strong></header>
+        <header><strong style="color: #333;">Тауар қорын басқару</strong></header>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding-top: 10px;">
-
             <div>
-                <p style="font-size: 0.9rem; margin-bottom: 10px;"><strong>Add New Product Category</strong></p>
+                <p style="font-size: 0.9rem; margin-bottom: 10px;"><strong>Жаңа санат қосу</strong></p>
                 <form action="/category/add" method="POST" style="display: flex; gap: 10px;">
-                    <input type="text" name="name" placeholder="e.g., Traditional Crafts" required style="flex-grow: 1;">
-                    <button type="submit" style="white-space: nowrap; background: #333;">Create</button>
+                    <input type="text" name="name" placeholder="Мысалы: Ұлттық бұйымдар" required style="flex-grow: 1;">
+                    <button type="submit" style="white-space: nowrap; background: #333;">Жасау</button>
                 </form>
             </div>
-
             <div style="font-size: 0.9rem; color: #555;">
-                <p>Currently managing <strong>{{len .Products}}</strong> active product listings across all Kazakh regions.</p>
-                <p>All deletions are permanent and will notify the respective seller.</p>
+                <p>Қазіргі уақытта Қазақстанның барлық аймақтары бойынша <strong>{{len .Products}}</strong> белсенді тауар бар.</p>
+                <p>Тауарды өшіру қайтарылмайды және сатушыға хабарлама жіберіледі.</p>
             </div>
         </div>
     </article>
 
-    <h3>Global Product Moderation</h3>
+    <h3>Өнімдерді модерациялау</h3>
     <table style="width: 100%; border-collapse: collapse; background: white;">
         <thead>
             <tr style="background-color: #333; color: white; text-align: left;">
-                <th style="padding: 12px;">Product Name</th>
-                <th style="padding: 12px;">City</th>
-                <th style="padding: 12px;">Price</th>
-                <th style="padding: 12px;">Stock</th>
-                <th style="padding: 12px; text-align: right;">Moderation</th>
+                <th style="padding: 12px;">Тауар атауы</th>
+                <th style="padding: 12px;">Қала</th>
+                <th style="padding: 12px;">Бағасы</th>
+                <th style="padding: 12px;">Қоймада</th>
+                <th style="padding: 12px; text-align: right;">Әрекет</th>
             </tr>
         </thead>
         <tbody>
@@ -59,17 +57,17 @@
                 <td style="padding: 12px;">{{.Price}} ₸</td>
                 <td style="padding: 12px;">{{.Stock}}</td>
                 <td style="padding: 12px; text-align: right;">
-                    <form action="/product/delete" method="POST" style="display:inline;" onsubmit="return confirm('ADMIN ACTION: Are you sure you want to remove this product from the marketplace?');">
+                    <form action="/product/delete" method="POST" style="display:inline;" onsubmit="return confirm('Бұл тауарды өшіруге сенімдісіз бе?');">
                         <input type="hidden" name="id" value="{{.ID.Hex}}">
                         <button type="submit" style="background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
-                            Remove Listing
+                            Жою
                         </button>
                     </form>
                 </td>
             </tr>
             {{else}}
             <tr>
-                <td colspan="5" style="padding: 30px; text-align: center; color: #999;">No products currently listed on the platform.</td>
+                <td colspan="5" style="padding: 30px; text-align: center; color: #999;">Платформада әзірге тауарлар жоқ.</td>
             </tr>
             {{end}}
         </tbody>

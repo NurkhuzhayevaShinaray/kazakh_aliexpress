@@ -28,16 +28,17 @@ type Order struct {
 	UserID        primitive.ObjectID `bson:"userid"`
 	Status        string             `bson:"status"`
 	TotalPrice    float64            `bson:"total_price"`
-	PaymentMethod string             `bson:"payment_method"` // ДОБАВЬ ЭТУ СТРОКУ
+	PaymentMethod string             `bson:"payment_method"`
 	Items         []OrderItem        `bson:"items"`
 	CreatedAt     time.Time          `bson:"created_at"`
 }
 
 type OrderItem struct {
-	ProductID primitive.ObjectID `bson:"productid"` // Убери подчеркивание
+	ProductID primitive.ObjectID `bson:"productid"`
 	Quantity  int                `bson:"quantity"`
-	UnitPrice float64            `bson:"unitprice"` // Убери подчеркивание
+	UnitPrice float64            `bson:"unitprice"`
 }
+
 type Category struct {
 	ID   primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Name string             `bson:"name" json:"name"`
@@ -59,12 +60,13 @@ type Product struct {
 	Stock       int                `bson:"stock" json:"stock"`
 	City        string             `bson:"city" json:"city"`
 	CategoryID  primitive.ObjectID `bson:"category_id" json:"category_id"`
-	SellerID    primitive.ObjectID `bson:"seller_id" json:"seller_id"` // NEW FIELD
+	SellerID    primitive.ObjectID `bson:"seller_id" json:"seller_id"`
 	Description string             `bson:"description" json:"description"`
 }
+
 type Cart struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty"`
 	UserID     primitive.ObjectID `bson:"user_id"`
-	Items      []*CartItem        `bson:"-"` // Поле для хранения списка в памяти
+	Items      []*CartItem        `bson:"-"`
 	TotalPrice float64            `bson:"total_price"`
 }

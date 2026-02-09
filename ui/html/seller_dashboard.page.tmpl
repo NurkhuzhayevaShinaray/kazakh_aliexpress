@@ -1,32 +1,34 @@
 {{template "base" .}}
 
+{{define "title"}}Сатушы панелі{{end}}
+
 {{define "main"}}
 <div class="container">
-    <header style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>Seller Dashboard</h2>
-        <span class="badge">Seller Mode</span>
+    <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>Сатушының жеке кабинеті</h2>
+        <span class="badge" style="background: #00afca; color: white; padding: 5px 12px; border-radius: 4px;">Сатушы режимі</span>
     </header>
 
     <article>
-        <h3>Add New Product</h3>
+        <h3>Жаңа тауар қосу</h3>
         <form action="/product/create" method="POST">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                 <div>
-                    <label>Product Name</label>
+                    <label>Тауар атауы</label>
                     <input type="text" name="name" required>
                 </div>
                 <div>
-                    <label>Price (₸)</label>
+                    <label>Бағасы (₸)</label>
                     <input type="number" name="price" required>
                 </div>
                 <div>
-                    <label>City</label>
-                    <input type="text" name="city" placeholder="e.g., Almaty" required>
+                    <label>Қала</label>
+                    <input type="text" name="city" placeholder="Мысалы: Алматы" required>
                 </div>
                 <div>
-                   <label>Category</label>
+                   <label>Санат</label>
                    <select name="category_id" required>
-                       <option value="" disabled selected>Select a category</option>
+                       <option value="" disabled selected>Санатты таңдаңыз</option>
                        {{range .Categories}}
                            <option value="{{.ID.Hex}}">{{.Name}}</option>
                        {{end}}
@@ -34,41 +36,43 @@
                 </div>
             </div>
             <div style="margin-top: 15px;">
-                <label>Description</label>
+                <label>Сипаттамасы</label>
                 <textarea name="description" rows="3"></textarea>
             </div>
-            <button type="submit" style="margin-top: 10px; background-color: #00afca;">Add Product to Marketplace</button>
+            <button type="submit" style="margin-top: 10px; background-color: #00afca; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">
+                Тауарды маркетплейске қосу
+            </button>
         </form>
     </article>
 
-    <article>
-        <h3>Your Current Inventory</h3>
-        <table>
+    <article style="margin-top: 30px;">
+        <h3>Сіздің тауарларыңыз</h3>
+        <table style="width: 100%; border-collapse: collapse;">
             <thead>
-                <tr>
-                    <th>Product Name</th>
-                    <th>Price</th>
-                    <th>City</th>
-                    <th style="text-align: right;">Action</th>
+                <tr style="text-align: left; border-bottom: 2px solid #eee;">
+                    <th style="padding: 10px;">Тауар атауы</th>
+                    <th style="padding: 10px;">Бағасы</th>
+                    <th style="padding: 10px;">Қала</th>
+                    <th style="padding: 10px; text-align: right;">Әрекет</th>
                 </tr>
             </thead>
             <tbody>
                 {{range .Products}}
-                <tr>
-                    <td><strong>{{.Name}}</strong></td>
-                    <td>{{.Price}} ₸</td>
-                    <td>{{.City}}</td>
-                    <td>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;"><strong>{{.Name}}</strong></td>
+                    <td style="padding: 10px;">{{.Price}} ₸</td>
+                    <td style="padding: 10px;">{{.City}}</td>
+                    <td style="padding: 10px;">
                         <div style="display: flex; gap: 10px; justify-content: flex-end;">
                             <a href="/product/update?id={{.ID.Hex}}"
                                style="padding: 6px 12px; background-color: #fcd116; color: #333; text-decoration: none; border-radius: 4px; font-size: 0.8em; font-weight: bold;">
-                                Edit
+                                Өңдеу
                             </a>
 
-                            <form action="/product/delete" method="POST" style="margin:0;" onsubmit="return confirm('Delete this product?');">
+                            <form action="/product/delete" method="POST" style="margin:0;" onsubmit="return confirm('Бұл тауарды өшіруге сенімдісіз бе?');">
                                 <input type="hidden" name="id" value="{{.ID.Hex}}">
                                 <button type="submit" style="background-color: #e74c3c; padding: 6px 12px; font-size: 0.8em; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                    Delete
+                                    Өшіру
                                 </button>
                             </form>
                         </div>
@@ -76,12 +80,11 @@
                 </tr>
                 {{else}}
                 <tr>
-                    <td colspan="4" style="text-align: center; padding: 20px; color: #666;">You haven't listed any products yet.</td>
+                    <td colspan="4" style="text-align: center; padding: 20px; color: #666;">Сіз әлі ешқандай тауар қосқан жоқсыз.</td>
                 </tr>
                 {{end}}
             </tbody>
         </table>
     </article>
-
 </div>
 {{end}}

@@ -5,74 +5,74 @@
     <article>
         <header>
             <h1 style="color: #00afca;">{{.Product.Name}}</h1>
-            <p style="color: #666;">Location: {{.Product.City}}</p>
+            <p style="color: #666;">Аймақ: {{.Product.City}}</p>
         </header>
 
-        <p style="font-size: 1.5rem;">Price: <strong>{{.Product.Price}} ₸</strong></p>
+        <p style="font-size: 1.5rem;">Бағасы: <strong>{{.Product.Price}} ₸</strong></p>
 
         {{if .IsAuthenticated}}
             {{if eq .UserRole "customer"}}
-                <form action="/order/create" method="POST" style="background: #f4f4f4; padding: 20px; border-radius: 8px;">
+                <form action="/cart/add" method="POST" style="background: #f4f4f4; padding: 20px; border-radius: 8px;">
                     <input type="hidden" name="product_id" value="{{.Product.ID.Hex}}">
 
                     <div style="margin-bottom: 15px;">
-                        <label for="qty">Quantity:</label>
+                        <label for="qty">Саны:</label>
                         <input type="number" name="qty" value="1" min="1" style="width: 60px; padding: 5px;">
                     </div>
 
-                    <button type="submit" class="btn-primary" style="width: 100%; font-size: 1.1rem;">Place Order Now</button>
-                    <p style="font-size: 0.8rem; color: #888; margin-top: 10px;">Ordering as: {{.UserName}}</p>
+                    <button type="submit" class="btn-primary" style="width: 100%; font-size: 1.1rem;">Тапсырыс беру</button>
+                    <p style="font-size: 0.8rem; color: #888; margin-top: 10px;">Тапсырыс беруші: {{.UserName}}</p>
                 </form>
             {{else if eq $.UserRole "seller"}}
                 <p style="padding: 15px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px;">
-                    Sellers can only view products. To buy, please use a Customer account.
+                    Сатушылар тек тауарларды қарай алады. Сатып алу үшін "Сатып алушы" аккаунтын қолданыңыз.
                 </p>
             {{end}}
         {{else}}
             <div style="padding: 20px; border: 2px dashed #ccc; text-align: center; border-radius: 8px;">
-                <p>Want to buy this? <a href="/login" style="color: #00afca; font-weight: bold;">Log in</a> or <a href="/register" style="color: #00afca; font-weight: bold;">Sign up</a> to start shopping!</p>
+                <p>Бұл тауарды сатып алғыңыз келе ме? Сауданы бастау үшін <a href="/login" style="color: #00afca; font-weight: bold;">жүйеге кіріңіз</a> немесе <a href="/register" style="color: #00afca; font-weight: bold;">тіркеліңіз</a>!</p>
             </div>
         {{end}}
 
         <hr>
 
-        <h3>Reviews</h3>
+        <h3>Пікірлер</h3>
         {{range .Reviews}}
             <blockquote style="border-left: 5px solid #00afca; padding-left: 15px; margin: 20px 0;">
                 <p>"{{.Comment}}"</p>
-                <footer style="color: #888;">— Rated: {{.Rating}}/5</footer>
+                <footer style="color: #888;">— Бағасы: {{.Rating}}/5</footer>
             </blockquote>
         {{else}}
-            <p>No reviews yet. Be the first to review this product!</p>
+            <p>Әзірге пікірлер жоқ. Осы тауар туралы бірінші болып пікір қалдырыңыз!</p>
         {{end}}
 
         <hr>
 
         {{if $.IsAuthenticated}}
             {{if eq $.UserRole "customer"}}
-                <h3>Leave a Review</h3>
+                <h3>Пікір қалдыру</h3>
                 <form action="/review/add" method="POST">
                     <input type="hidden" name="product_id" value="{{.Product.ID.Hex}}">
 
                     <div style="margin-bottom: 10px;">
-                        <label for="rating">Rating:</label>
+                        <label for="rating">Бағалау:</label>
                         <select name="rating" id="rating">
-                            <option value="5">5 - Excellent</option>
-                            <option value="4">4 - Good</option>
-                            <option value="3">3 - Average</option>
-                            <option value="2">2 - Poor</option>
-                            <option value="1">1 - Terrible</option>
+                            <option value="5">5 - Өте жақсы</option>
+                            <option value="4">4 - Жақсы</option>
+                            <option value="3">3 - Орташа</option>
+                            <option value="2">2 - Нашар</option>
+                            <option value="1">1 - Өте нашар</option>
                         </select>
                     </div>
 
-                    <label for="comment">Comment:</label>
-                    <textarea id="comment" name="comment" required placeholder="What do you think about this product?" style="width: 100%; min-height: 100px;"></textarea>
+                    <label for="comment">Пікіріңіз:</label>
+                    <textarea id="comment" name="comment" required placeholder="Бұл тауар туралы ойыңыз қандай?" style="width: 100%; min-height: 100px;"></textarea>
 
-                    <button type="submit" class="btn-secondary" style="margin-top: 10px;">Submit Review</button>
+                    <button type="submit" class="btn-secondary" style="margin-top: 10px;">Пікірді жіберу</button>
                 </form>
             {{end}}
         {{else}}
-            <p style="font-size: 0.9rem; color: #666;"><a href="/login">Login</a> to leave a review.</p>
+            <p style="font-size: 0.9rem; color: #666;">Пікір қалдыру үшін <a href="/login">жүйеге кіріңіз</a>.</p>
         {{end}}
     </article>
 </div>

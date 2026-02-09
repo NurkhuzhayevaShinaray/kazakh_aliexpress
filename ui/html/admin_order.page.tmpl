@@ -1,14 +1,17 @@
 {{template "base" .}}
+
+{{define "title"}}Тапсырыстарды басқару{{end}}
+
 {{define "main"}}
 <div class="container">
-    <h2>Order Management (Tracking)</h2>
+    <h2>Тапсырыстарды басқару және қадағалау</h2>
     <table>
         <thead>
             <tr>
-                <th>Order ID</th>
-                <th>Current Status</th>
-                <th>Total</th>
-                <th>Action</th>
+                <th>Тапсырыс ID</th>
+                <th>Ағымдағы күйі</th>
+                <th>Жалпы соммасы</th>
+                <th>Әрекет</th>
             </tr>
         </thead>
         <tbody>
@@ -21,13 +24,18 @@
                     <form action="/admin/orders/update" method="POST">
                         <input type="hidden" name="id" value="{{.ID.Hex}}">
                         <select name="status">
-                            <option value="Processing">Processing</option>
-                            <option value="Shipped">Shipped</option>
-                            <option value="Delivered">Delivered</option>
+                            <option value="Processing">Өңделуде</option>
+                            <option value="Shipped">Жөнелтілді</option>
+                            <option value="Delivered">Жеткізілді</option>
+                            <option value="Cancelled">Бас тартылды</option>
                         </select>
-                        <button type="submit">Update</button>
+                        <button type="submit" style="background: #333; color: white; padding: 5px 10px; border: none; border-radius: 4px; cursor: pointer;">Жаңарту</button>
                     </form>
                 </td>
+            </tr>
+            {{else}}
+            <tr>
+                <td colspan="4" style="padding: 30px; text-align: center; color: #999;">Әзірге ешқандай тапсырыс тіркелмеген.</td>
             </tr>
             {{end}}
         </tbody>

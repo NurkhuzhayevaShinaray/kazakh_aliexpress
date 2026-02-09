@@ -1,36 +1,36 @@
 {{template "base" .}}
 
-{{define "title"}}Register{{end}}
+{{define "title"}}Тіркелу{{end}}
 
 {{define "main"}}
 <article style="max-width: 600px; margin: auto;">
     <header>
-        <h2>Create your Account</h2>
-        <p>Join the Kazakh@Express community</p>
+        <h2>Аккаунт жасау</h2>
+        <p>Kazakh@Express қауымдастығына қосылыңыз</p>
     </header>
     <form action='/register' method='POST'>
         <div>
-            <label>Email</label>
+            <label>Электрондық пошта</label>
             <input type='email' name='email' placeholder="example@mail.kz" required>
         </div>
 
         <div>
-            <label>Password</label>
+            <label>Құпия сөз</label>
             <input type='password' name='password' minlength="8" required>
         </div>
 
         <div>
-            <label>I want to join as a:</label>
+            <label>Тіркелу мақсатым:</label>
             <select name="role">
-                <option value="customer">Customer (I want to buy)</option>
-                <option value="seller">Seller (I want to sell items)</option>
+                <option value="customer">Сатып алушымын (Тауар алғым келеді)</option>
+                <option value="seller">Сатушымын (Тауар сатқым келеді)</option>
             </select>
         </div>
 
-        <button type='submit' class="signup-btn" style="width: 100%; margin-top: 20px;">Register</button>
+        <button type='submit' class="signup-btn" style="width: 100%; margin-top: 20px;">Тіркелу</button>
     </form>
     <footer style="margin-top: 20px; text-align: center;">
-        <p>Already have an account? <a href="/login">Login here</a></p>
+        <p>Аккаунтыңыз бар ма? <a href="/login">Осында кіріңіз</a></p>
     </footer>
 </article>
 {{end}}

@@ -184,12 +184,14 @@ func (app *application) createProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newP := models.Product{
-		ID:    primitive.NewObjectID(),
-		Name:  r.FormValue("name"),
-		Price: price,
-		Stock: 10, City: r.FormValue("city"),
-		CategoryID: catID,
-		SellerID:   sellerID, Description: r.FormValue("description"),
+		ID:          primitive.NewObjectID(),
+		Name:        r.FormValue("name"),
+		Price:       price,
+		Stock:       10,
+		City:        r.FormValue("city"),
+		CategoryID:  catID,
+		SellerID:    sellerID,
+		Description: r.FormValue("description"),
 	}
 	app.DB.Products.InsertOne(r.Context(), newP)
 	http.Redirect(w, r, "/seller/dashboard", http.StatusSeeOther)
@@ -197,24 +199,38 @@ func (app *application) createProduct(w http.ResponseWriter, r *http.Request) {
 
 func (app *application) deleteProduct(w http.ResponseWriter, r *http.Request) {
 	app.DB.DeleteProduct(r.FormValue("id"))
-	http.Redirect(w, r, "/catalog", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin", http.StatusSeeOther)
 }
 
 func (app *application) addCategory(w http.ResponseWriter, r *http.Request) {
 	app.DB.AddCategory(r.FormValue("name"))
-	http.Redirect(w, r, "/catalog", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin", http.StatusSeeOther)
 }
 
 func (app *application) adminDashboard(w http.ResponseWriter, r *http.Request) {
-	products, _ := app.DB.GetAllProducts()
-	revenue, _ := app.DB.GetTotalRevenue()
-	totalOrders, _ := app.DB.GetTotalOrderCount()
+	products, err := app.DB.GetAllProducts()
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
 
-	app.render(w, r, "admin_dashboard.page.tmpl", &TemplateData{
+	revenue, err := app.DB.GetTotalRevenue()
+	if err != nil {
+		revenue = 0
+	}
+
+	totalOrders, err := app.DB.GetTotalOrderCount()
+	if err != nil {
+		totalOrders = 0
+	}
+
+	data := app.addDefaultData(&TemplateData{
 		Products:     products,
 		TotalRevenue: revenue,
 		TotalOrders:  int(totalOrders),
-	})
+	}, r)
+
+	app.render(w, r, "admin_dashboard.page.tmpl", data)
 }
 
 func (app *application) listUsers(w http.ResponseWriter, r *http.Request) {
@@ -253,33 +269,24 @@ func (app *application) showCart(w http.ResponseWriter, r *http.Request) {
 	userIDStr := app.session.GetString(r.Context(), "authenticatedUserID")
 	userID, _ := primitive.ObjectIDFromHex(userIDStr)
 
-	// 1. Получаем список товаров из базы
 	cartItems, err := app.DB.GetUserCart(userID)
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
 
-	// 2. Считаем общую сумму
-	// Мы пересчитываем Total на лету, чтобы не зависеть от багов в БД
 	var grandTotal float64
 	for _, item := range cartItems {
 		item.Total = item.Price * float64(item.Quantity)
 		grandTotal += item.Total
 	}
 
-	// 3. Используем ТВОЙ механизм данных (addDefaultData)
-	// Создаем пустую структуру и наполняем её стандартными данными (User, Year и т.д.)
 	data := app.addDefaultData(&TemplateData{}, r)
-
-	// 4. Передаем корзину в TemplateData
-	// Твой TemplateData уже имеет поле Cart *models.Cart
 	data.Cart = &models.Cart{
 		Items:      cartItems,
 		TotalPrice: grandTotal,
 	}
 
-	// 5. Рендерим страницу
 	app.render(w, r, "cart.page.tmpl", data)
 }
 
@@ -348,7 +355,6 @@ func (app *application) addToCart(w http.ResponseWriter, r *http.Request) {
 	pid, _ := primitive.ObjectIDFromHex(pidHex)
 	uid, _ := primitive.ObjectIDFromHex(app.session.GetString(r.Context(), "authenticatedUserID"))
 
-	// Сначала найдем продукт, чтобы взять его цену и имя
 	product, err := app.DB.GetProduct(pidHex)
 	if err != nil {
 		app.serverError(w, err)
@@ -361,7 +367,6 @@ func (app *application) addToCart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filter := bson.M{"user_id": uid, "product_id": pid}
-	// Сохраняем имя и цену ОБЯЗАТЕЛЬНО
 	update := bson.M{
 		"$set": bson.M{
 			"name":  product.Name,
@@ -397,13 +402,12 @@ func (app *application) createOrderFromCart(w http.ResponseWriter, r *http.Reque
 	var total float64
 
 	for _, item := range cartItems {
-		// Считаем актуальный Total для каждого товара
 		itemTotal := item.Price * float64(item.Quantity)
 
 		orderItems = append(orderItems, models.OrderItem{
 			ProductID: item.ProductID,
 			Quantity:  item.Quantity,
-			UnitPrice: item.Price, // Берем цену из корзины!
+			UnitPrice: item.Price,
 		})
 		total += itemTotal
 	}
@@ -413,7 +417,7 @@ func (app *application) createOrderFromCart(w http.ResponseWriter, r *http.Reque
 		UserID:        userID,
 		Status:        "Pending",
 		TotalPrice:    total,
-		PaymentMethod: paymentMethod, // СОХРАНЯЕМ МЕТОД ОПЛАТЫ
+		PaymentMethod: paymentMethod,
 		Items:         orderItems,
 		CreatedAt:     time.Now(),
 	}
@@ -431,12 +435,10 @@ func (app *application) createOrderFromCart(w http.ResponseWriter, r *http.Reque
 }
 
 func (app *application) catalogPage(w http.ResponseWriter, r *http.Request) {
-	// Получаем данные из поисковой строки браузера
 	search := r.URL.Query().Get("search")
 	category := r.URL.Query().Get("category")
 	city := r.URL.Query().Get("city")
 
-	// Вызываем фильтрацию (убедись, что метод GetFilteredProducts есть в mongodb.go)
 	products, err := app.DB.GetFilteredProducts(search, category, city)
 	if err != nil {
 		app.serverError(w, err)
@@ -457,14 +459,12 @@ func (app *application) catalogPage(w http.ResponseWriter, r *http.Request) {
 func (app *application) showProduct(w http.ResponseWriter, r *http.Request) {
 	idHex := r.URL.Query().Get("id")
 
-	// Получаем продукт через твой DB метод
 	p, err := app.DB.GetProduct(idHex)
 	if err != nil {
 		app.notFound(w)
 		return
 	}
 
-	// Получаем отзывы (метод GetReviews у тебя должен быть в mongodb.go)
 	revs, _ := app.DB.GetReviews(p.ID)
 
 	data := app.addDefaultData(&TemplateData{}, r)

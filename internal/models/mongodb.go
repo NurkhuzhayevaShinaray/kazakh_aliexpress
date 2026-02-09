@@ -68,7 +68,6 @@ func (m *MongoDB) CreateOrder(o Order) error {
 	o.CreatedAt = time.Now()
 	o.Status = "Pending"
 
-	// Обновляем сток товаров
 	for _, item := range o.Items {
 		m.Products.UpdateOne(context.TODO(), bson.M{"_id": item.ProductID}, bson.M{"$inc": bson.M{"stock": -item.Quantity}})
 	}
@@ -79,7 +78,6 @@ func (m *MongoDB) CreateOrder(o Order) error {
 
 func (m *MongoDB) GetCartByUserID(userID primitive.ObjectID) (*Cart, error) {
 	var c Cart
-	// ИСПРАВЛЕНО: коллекция "cart" (было "carts")
 	collection := m.Users.Database().Collection("cart")
 	err := collection.FindOne(context.TODO(), bson.M{"user_id": userID}).Decode(&c)
 	return &c, err
@@ -217,7 +215,6 @@ func (m *MongoDB) UpdateProduct(p Product) error {
 }
 
 func (m *MongoDB) ClearCart(userID primitive.ObjectID) error {
-	// ИСПРАВЛЕНО: Полная очистка корзины
 	collection := m.Users.Database().Collection("cart")
 	_, err := collection.DeleteOne(context.TODO(), bson.M{"user_id": userID})
 	return err
@@ -225,7 +222,6 @@ func (m *MongoDB) ClearCart(userID primitive.ObjectID) error {
 
 func (m *MongoDB) GetOrdersByUser(userID primitive.ObjectID) ([]*Order, error) {
 	var orders []*Order
-	// ИСПРАВЛЕНО: Ищем по "userid" (как в тегах bson)
 	cur, err := m.Orders.Find(context.TODO(), bson.M{"userid": userID})
 	if err != nil {
 		return nil, err

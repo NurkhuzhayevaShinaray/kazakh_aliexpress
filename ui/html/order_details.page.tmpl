@@ -1,23 +1,22 @@
 {{template "base" .}}
 
-{{define "title"}}Order #{{.Order.ID.Hex}}{{end}}
+{{define "title"}}Тапсырыс #{{.Order.ID.Hex}}{{end}}
 
 {{define "main"}}
 <div class="container">
     <nav style="margin-bottom: 20px;">
-        <a href="/orders">← Back to My Orders</a>
+        <a href="/orders">← Тапсырыстарым тізіміне қайту</a>
     </nav>
 
     {{with .Order}}
     <div class="card" style="padding: 20px; border: 1px solid #eee;">
-        <h2>Order Details</h2>
+        <h2>Тапсырыс туралы мәліметтер</h2>
         <hr>
-        <p><strong>Order ID:</strong> {{.ID.Hex}}</p>
-        <p><strong>Status:</strong> {{.Status}}</p>
-        <p><strong>Date:</strong> {{.CreatedAt.Format "Jan 02, 2006 at 15:04"}}</p>
-        <p><strong>Total Price:</strong> {{.TotalPrice}} ₸</p>
-
-        </div>
+        <p><strong>Тапсырыс ID:</strong> {{.ID.Hex}}</p>
+        <p><strong>Күйі:</strong> {{.Status}}</p>
+        <p><strong>Уақыты:</strong> {{.CreatedAt.Format "02.01.2006, 15:04"}}</p>
+        <p><strong>Жалпы сомасы:</strong> {{.TotalPrice}} ₸</p>
+    </div>
     {{end}}
 </div>
 {{end}}

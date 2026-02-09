@@ -1,18 +1,17 @@
 {{define "main"}}
 <div class="container">
-    <h2>Shopping Cart</h2>
+    <h2>Себет</h2>
 
-    {{/* Check if Cart exists AND has items */}}
     {{if and .Cart (gt (len .Cart.Items) 0)}}
     <div style="display: flex; flex-direction: column; gap: 1rem;">
         <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
             <thead>
                 <tr style="background: #f8f9fa; text-align: left;">
-                    <th style="padding: 15px;">Product</th>
-                    <th style="padding: 15px;">Price</th>
-                    <th style="padding: 15px;">Quantity</th>
-                    <th style="padding: 15px;">Total</th>
-                    <th style="padding: 15px;">Action</th>
+                    <th style="padding: 15px;">Тауар</th>
+                    <th style="padding: 15px;">Бағасы</th>
+                    <th style="padding: 15px;">Саны</th>
+                    <th style="padding: 15px;">Жиыны</th>
+                    <th style="padding: 15px;">Әрекет</th>
                 </tr>
             </thead>
             <tbody>
@@ -25,7 +24,7 @@
                     <td style="padding: 15px;">
                         <form action="/cart/remove" method="POST" style="display:inline;">
                             <input type="hidden" name="product_id" value="{{.ProductID.Hex}}">
-                            <button type="submit" style="color: #d9534f; background: none; border: none; cursor: pointer;">Remove</button>
+                            <button type="submit" style="color: #d9534f; background: none; border: none; cursor: pointer;">Өшіру</button>
                         </form>
                     </td>
                 </tr>
@@ -34,26 +33,25 @@
         </table>
 
         <div style="margin-top: 15px; text-align: left;">
-            <label for="payment_method"><strong>Choose Payment Method:</strong></label>
+            <label for="payment_method"><strong>Төлем әдісін таңдаңыз:</strong></label>
             <select name="payment_method" id="payment_method" form="checkout-form" style="width: 100%; padding: 8px; margin-top: 5px;">
-                <option value="Credit Card">Credit Card</option>
+                <option value="Credit Card">Банк картасы</option>
                 <option value="Kaspi.kz">Kaspi.kz</option>
-                <option value="Cash on Delivery">Cash on Delivery</option>
+                <option value="Cash on Delivery">Курьерге қолма-қол ақша</option>
             </select>
         </div>
 
         <form action="/order/create" method="POST" id="checkout-form">
             <input type="hidden" name="amount" value="{{.Cart.TotalPrice}}">
             <button type="submit" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">
-                Pay Now & Checkout
+                Төлеу және тапсырысты рәсімдеу
             </button>
         </form>
-        </div>
     </div>
     {{else}}
     <div style="text-align: center; padding: 50px; border: 2px dashed #ccc; border-radius: 12px;">
-        <p>Your cart is empty.</p>
-        <a href="/catalog" style="color: #007bff; text-decoration: none;">Go to Catalog</a>
+        <p>Себетіңіз бос.</p>
+        <a href="/catalog" style="color: #007bff; text-decoration: none;">Каталогқа өту</a>
     </div>
     {{end}}
 </div>

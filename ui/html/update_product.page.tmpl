@@ -1,17 +1,17 @@
 {{template "base" .}}
 
-{{define "title"}}Редактировать товар{{end}}
+{{define "title"}}Тауарды өңдеу{{end}}
 
 {{define "main"}}
 <div class="container">
     <nav style="margin-bottom: 20px;">
-        <a href="/seller/dashboard" style="text-decoration: none; color: #00afca;">← Назад в дашборд</a>
+        <a href="/seller/dashboard" style="text-decoration: none; color: #00afca;">← Жеке кабинетке қайту</a>
     </nav>
 
     <article class="card" style="padding: 30px; border: 1px solid var(--border);">
         <header>
-            <h2>Редактирование товара</h2>
-            <p style="color: #666;">Измените необходимые поля и нажмите "Сохранить изменения"</p>
+            <h2>Тауарды өңдеу</h2>
+            <p style="color: #666;">Қажетті өрістерді өзгертіп, "Өзгерістерді сақтау" түймесін басыңыз</p>
         </header>
 
         <form action="/product/update/save" method="POST">
@@ -19,19 +19,19 @@
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                 <div>
-                    <label>Название товара</label>
+                    <label>Тауар атауы</label>
                     <input type="text" name="name" value="{{.Product.Name}}" required>
                 </div>
                 <div>
-                    <label>Цена (₸)</label>
+                    <label>Бағасы (₸)</label>
                     <input type="number" name="price" value="{{.Product.Price}}" required>
                 </div>
                 <div>
-                    <label>Город</label>
+                    <label>Қала</label>
                     <input type="text" name="city" value="{{.Product.City}}" required>
                 </div>
                 <div>
-                    <label>Категория</label>
+                    <label>Санат</label>
                    <select name="category_id" required>
                        {{range .Categories}}
                            <option value="{{.ID.Hex}}" {{if $.Product}}{{if eq .ID.Hex $.Product.CategoryID.Hex}}selected{{end}}{{end}}>
@@ -43,16 +43,16 @@
             </div>
 
             <div style="margin-top: 15px;">
-                <label>Описание</label>
+                <label>Сипаттамасы</label>
                 <textarea name="description" rows="5" required>{{.Product.Description}}</textarea>
             </div>
 
             <div style="margin-top: 20px; display: flex; gap: 10px;">
-                <button type="submit" class="btn-primary" style="background-color: #00afca; flex: 1;">
-                    Сохранить изменения
+                <button type="submit" class="btn-primary" style="background-color: #00afca; flex: 1; color: white; border: none; padding: 14px 20px; border-radius: 8px; cursor: pointer;">
+                    Өзгерістерді сақтау
                 </button>
                 <a href="/seller/dashboard" class="btn-secondary" style="text-align: center; flex: 1; padding: 14px 20px; border: 1px solid #ccc; text-decoration: none; color: #333; border-radius: 8px;">
-                    Отмена
+                    Бас тарту
                 </a>
             </div>
         </form>

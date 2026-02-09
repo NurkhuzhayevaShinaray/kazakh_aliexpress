@@ -1,6 +1,6 @@
 {{define "base"}}
 <!doctype html>
-<html>
+<html lang="kk">
     <head>
         <meta charset='utf-8'>
         <title>Kazakh@Express</title>
@@ -13,45 +13,43 @@
                 <h1><a href='/'>Kazakh<span>@Express</span></a></h1>
               <nav>
                   <ul class="nav-links">
-                      <li><a href="/">Home</a></li>
-                      <li><a href="/catalog">Catalog</a></li>
+                      <li><a href="/">Басты бет</a></li>
+                      <li><a href="/catalog">Каталог</a></li>
 
                       {{if $.IsAuthenticated}}
                           {{if eq $.UserRole "customer"}}
-                              <li><a href="/orders">My Orders</a></li>
-                              <li><a href="/cart">Cart</a></li>
+                              <li><a href="/orders">Тапсырыстарым</a></li>
+                              <li><a href="/cart">Себет</a></li>
                           {{end}}
 
                           {{if eq $.UserRole "seller"}}
-                              <li><a href="/seller/dashboard" style="color: #00afca;">Seller Center</a></li>
+                              <li><a href="/seller/dashboard" style="color: #00afca;">Сатушы орталығы</a></li>
                           {{end}}
 
                           {{if eq $.UserRole "admin"}}
-                              <li><a href="/admin/dashboard" style="color: #fcd116;">Admin Panel</a></li>
+                              <li><a href="/admin/dashboard" style="color: #fcd116;">Админ панелі</a></li>
                           {{end}}
 
                           <li>
                               <form action='/logout' method='POST' style='display:inline'>
-                                  <button class="logout-btn">Logout ({{.UserName}})</button>
+                                  <button class="logout-btn">Шығу ({{.UserName}})</button>
                               </form>
                           </li>
                       {{else}}
-                          <li><a href="/login">Login</a></li>
-                          <li><a href="/register" class="signup-btn">Sign Up</a></li>
+                          <li><a href="/login">Кіру</a></li>
+                          <li><a href="/register" class="signup-btn">Тіркелу</a></li>
                       {{end}}
                   </ul>
               </nav>
             </div>
         </header>
 
-
-
         <main class="container">
             {{template "main" .}}
         </main>
 
         <footer class="container">
-            <p>&copy; 2026 Kazakh Aliexpress - Local Sellers, Fast Delivery</p>
+            <p>&copy; 2026 Kazakh Aliexpress — Отандық сатушылар, жылдам жеткізу</p>
         </footer>
     </body>
 </html>
